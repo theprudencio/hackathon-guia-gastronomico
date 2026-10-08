@@ -7,12 +7,22 @@ export function apiUrl(path: string): string {
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem('gg_token');
+  return localStorage.getItem('gg_token') ?? sessionStorage.getItem('gg_token');
 }
 
-export function setToken(token: string | null) {
-  if (token) localStorage.setItem('gg_token', token);
-  else localStorage.removeItem('gg_token');
+export function setToken(token: string | null, persistent = true) {
+  if (token) {
+    if (persistent) {
+      localStorage.setItem('gg_token', token);
+      sessionStorage.removeItem('gg_token');
+    } else {
+      sessionStorage.setItem('gg_token', token);
+      localStorage.removeItem('gg_token');
+    }
+  } else {
+    localStorage.removeItem('gg_token');
+    sessionStorage.removeItem('gg_token');
+  }
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {

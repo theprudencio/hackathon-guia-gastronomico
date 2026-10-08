@@ -3,3 +3,10 @@ obj/
 node_modules/
 dist/
 .env
+.vs/
+launchSettings.json
+*.log
+*.db
+*.db-shm
+*.db-wal
+*.tsbuildinfo

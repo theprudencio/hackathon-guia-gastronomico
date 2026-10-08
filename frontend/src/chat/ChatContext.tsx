@@ -7,12 +7,16 @@ export interface ChatMsg {
   role: 'user' | 'assistant';
   text: string;
   restaurants?: Restaurant[];
+  at?: number;
 }
 
-const GREETING: ChatMsg = {
+const GREETING_TEXT = 'Oi! Me diz o que te apetece 😋 Ex: "quero um japonês barato perto de mim"';
+
+const makeGreeting = (): ChatMsg => ({
   role: 'assistant',
-  text: 'Oi! Me diz o que te apetece 😋 Ex: "quero um japonês barato perto de mim"',
-};
+  text: GREETING_TEXT,
+  at: Date.now(),
+});
 
 interface ChatCtx {
   messages: ChatMsg[];
@@ -25,14 +29,14 @@ const storageKey = (uid?: string) => `gg_chat_${uid ?? 'anon'}`;
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMsg[]>([GREETING]);
+  const [messages, setMessages] = useState<ChatMsg[]>(() => [makeGreeting()]);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey(user?.id));
-      setMessages(raw ? (JSON.parse(raw) as ChatMsg[]) : [GREETING]);
+      setMessages(raw ? (JSON.parse(raw) as ChatMsg[]) : [makeGreeting()]);
     } catch {
-      setMessages([GREETING]);
+      setMessages([makeGreeting()]);
     }
   }, [user?.id]);
 
@@ -44,7 +48,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [messages, user?.id]);
 
-  return <Ctx.Provider value={{ messages, setMessages, clear: () => setMessages([GREETING]) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ messages, setMessages, clear: () => setMessages([makeGreeting()]) }}>{children}</Ctx.Provider>;
 }
 
 export function useChat(): ChatCtx {

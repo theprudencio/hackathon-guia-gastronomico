@@ -1,10 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Car,
+  ChevronRight,
+  MapPin,
+  Navigation,
+  Star,
+  Tag,
+} from 'lucide-react';
 import { api } from '../api/client';
 import { Layout } from '../components/Layout';
-import { RestaurantCard } from '../components/RestaurantCard';
-import type { Restaurant } from '../components/RestaurantCard';
 import { StarRating } from '../components/StarRating';
+import {
+  CoverPhoto,
+  CuisinePill,
+  FavButton,
+  RatingBadge,
+  fmtDistance,
+  useFavs,
+} from '../components/cards';
+import type { Restaurant } from '../components/RestaurantCard';
 
 interface Review {
   id: string;
@@ -12,6 +28,19 @@ interface Review {
   stars: number;
   comment: string | null;
   createdAt: string;
+}
+
+function mapsUrl(lat: number, lng: number) {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+
+function Avatar({ name }: { name: string }) {
+  const initial = name.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-[#f04e23]">
+      {initial}
+    </span>
+  );
 }
 
 export function RestaurantDetail() {
@@ -25,6 +54,7 @@ export function RestaurantDetail() {
   const [stars, setStars] = useState(5);
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
+  const { favs, toggle } = useFavs();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -62,58 +92,196 @@ export function RestaurantDetail() {
     }
   }
 
+  const avg = restaurant?.avgStars ?? restaurant?.rating ?? 0;
+  const distance = restaurant ? fmtDistance(restaurant.distanceKm) : null;
+  const cuisine = restaurant?.cuisines[0];
+
   return (
     <Layout>
-      <button
-        onClick={() => (from ? nav(from) : nav(-1))}
-        className="mb-2 text-sm font-semibold text-brand-600"
-      >
-        ← Voltar
-      </button>
-      <h1 className="text-2xl font-bold">Detalhes 🍽️</h1>
-      <div className="mt-4 space-y-4">
-        {error && <p className="text-center text-sm text-red-600">{error}</p>}
-        {!restaurant && !error && <p className="text-center text-sm text-neutral-500">Carregando...</p>}
-        {restaurant && <RestaurantCard r={restaurant} photoW={1000} />}
-
-        {restaurant && (
-          <div className="rounded-xl border bg-white p-3">
-            <h2 className="text-sm font-bold">Sua avaliação</h2>
-            <StarRating value={stars} onChange={setStars} />
-            <textarea
-              className="mt-2 w-full rounded border p-2 text-sm"
-              rows={2}
-              maxLength={280}
-              placeholder="Comentário curto (opcional)"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-            <button
-              onClick={() => void submit()}
-              disabled={saving}
-              className="mt-2 w-full rounded bg-brand-500 p-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {saving ? 'Enviando...' : 'Avaliar'}
-            </button>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <h2 className="text-sm font-bold">Avaliações ({reviews.length})</h2>
-          {reviews.map((r) => (
-            <div key={r.id} className="rounded-xl border bg-white p-3 text-sm">
-              <div className="flex items-center justify-between">
-                <strong>{r.userName}</strong>
-                <StarRating value={r.stars} size="sm" />
-              </div>
-              {r.comment && <p className="mt-1 text-neutral-600">{r.comment}</p>}
-            </div>
-          ))}
-          {restaurant && reviews.length === 0 && (
-            <p className="text-sm text-neutral-500">Seja o primeiro a avaliar!</p>
-          )}
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => (from ? nav(from) : nav(-1))}
+          className="flex items-center gap-1 text-sm font-semibold text-[#f04e23] hover:underline"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </button>
+        <Link
+          to="/discoveries"
+          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
+        >
+          <span aria-hidden="true">🧭</span>
+          Ver mais descobertas
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
+
+      {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
+
+      {!restaurant && !error && (
+        <div className="mt-4 overflow-hidden rounded-2xl bg-white p-2 shadow-sm">
+          <div className="aspect-video w-full animate-pulse rounded-xl bg-orange-100" />
+          <div className="space-y-2 p-4">
+            <div className="h-5 w-1/2 animate-pulse rounded bg-neutral-200" />
+            <div className="h-3 w-full animate-pulse rounded bg-neutral-100" />
+          </div>
+        </div>
+      )}
+
+      {restaurant && (
+        <div className="mt-4 grid items-start gap-4 md:grid-cols-2">
+          {/* ===== coluna principal ===== */}
+          <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+            <div className="relative p-2 pb-0">
+              <CoverPhoto r={restaurant} />
+              {restaurant.rating != null && (
+                <RatingBadge value={restaurant.rating} className="absolute right-4 top-4" />
+              )}
+              {cuisine && <CuisinePill cuisine={cuisine} className="absolute bottom-3 left-5" />}
+            </div>
+
+            <div className="p-4 pt-3">
+              <div className="flex items-start justify-between gap-2">
+                <h1 className="text-xl font-extrabold text-slate-800">{restaurant.name}</h1>
+                <FavButton fav={favs.includes(restaurant.id)} onToggle={() => toggle(restaurant.id)} className="shrink-0" />
+              </div>
+
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4 text-[#f04e23]" />
+                  {restaurant.address}
+                </span>
+                {distance && (
+                  <span className="flex items-center gap-1">
+                    <span className="h-4 w-px bg-slate-100" />
+                    <Car className="h-4 w-4 text-[#f04e23]" />
+                    {distance}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  {restaurant.reviewsCount} avaliação(ões)
+                </span>
+                {restaurant.avgStars != null && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                    <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                    média local {restaurant.avgStars.toFixed(1)}
+                  </span>
+                )}
+                {restaurant.priceLevel != null && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                    <span className="text-[#f04e23]">${'$'.repeat(Math.max(1, restaurant.priceLevel))}</span>
+                  </span>
+                )}
+              </div>
+
+              <a
+                href={mapsUrl(restaurant.lat, restaurant.lng)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 flex h-12 items-center justify-center gap-2 rounded-xl bg-[#f04e23] text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(240,78,35,0.35)] transition hover:bg-[#d9441b]"
+              >
+                <Navigation className="h-[18px] w-[18px]" />
+                Ver no mapa
+              </a>
+            </div>
+          </div>
+
+          {/* ===== coluna lateral ===== */}
+          <div className="flex flex-col gap-4">
+            <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+              <h2 className="font-bold text-slate-800">Avaliações</h2>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-2xl font-extrabold text-slate-800">{avg.toFixed(1)}</span>
+                <StarRating value={Math.round(avg)} />
+                <span className="text-xs text-slate-400">
+                  ({reviews.length} {reviews.length === 1 ? 'avaliação' : 'avaliações'})
+                </span>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {reviews.map((r) => (
+                  <div key={r.id} className="rounded-xl bg-[#fff7ec] p-3">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={r.userName} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-700">{r.userName}</p>
+                        <StarRating value={r.stars} size="sm" />
+                      </div>
+                    </div>
+                    {r.comment && <p className="mt-2 text-sm text-slate-600">{r.comment}</p>}
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      {new Date(r.createdAt).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                ))}
+                {reviews.length === 0 && (
+                  <p className="text-sm text-slate-500">Seja o primeiro a avaliar!</p>
+                )}
+              </div>
+
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <h3 className="text-sm font-bold text-slate-700">Sua avaliação</h3>
+                <StarRating value={stars} onChange={setStars} />
+                <textarea
+                  className="mt-2 w-full rounded-xl border border-slate-100 bg-[#f7f8fa] p-3 text-sm outline-none placeholder:text-slate-400 focus:border-orange-300"
+                  rows={2}
+                  maxLength={280}
+                  placeholder="Comentário curto (opcional)"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                />
+                <button
+                  onClick={() => void submit()}
+                  disabled={saving}
+                  className="mt-2 w-full rounded-xl bg-[#f04e23] p-2.5 text-sm font-semibold text-white transition hover:bg-[#d9441b] disabled:opacity-50"
+                >
+                  {saving ? 'Enviando...' : 'Avaliar'}
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+              <h2 className="flex items-center gap-1.5 font-bold text-slate-800">
+                <MapPin className="h-4 w-4 text-[#f04e23]" />
+                Localização
+              </h2>
+              <p className="mt-2 text-[13px] text-slate-500">{restaurant.address}</p>
+              <a
+                href={mapsUrl(restaurant.lat, restaurant.lng)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Ver no Google Maps
+              </a>
+            </section>
+
+            {restaurant.cuisines.length > 0 && (
+              <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+                <h2 className="flex items-center gap-1.5 font-bold text-slate-800">
+                  <Tag className="h-4 w-4 text-[#f04e23]" />
+                  Tags
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {restaurant.cuisines.map((c) => (
+                    <span
+                      key={c}
+                      className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-[#f04e23]"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

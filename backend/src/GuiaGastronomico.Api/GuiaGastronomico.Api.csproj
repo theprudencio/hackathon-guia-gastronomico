@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>GuiaGastronomico.Api</RootNamespace>
+    <UserSecretsId>400e4511-7a8d-4130-a5ea-4f8e31072480</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
