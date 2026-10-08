@@ -10,4 +10,4 @@ public interface ILlmService
 
 public record LlmMsg(string Role, string? Content, string? ToolCallId = null, LlmToolCall? ToolCall = null);
 
-public record LlmToolCall(string Id, string Name, string Arguments);
+public record LlmToolCall(string Id, string Name, string Arguments, string? ThoughtSignature = null);
