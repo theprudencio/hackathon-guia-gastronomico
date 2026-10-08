@@ -10,12 +10,19 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-guia} -d ${POSTGRES_DB:-guia}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   api:
     build: ./backend
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       DB_CONN: Host=db;Port=5432;Database=${POSTGRES_DB:-guia};Username=${POSTGRES_USER:-guia};Password=${POSTGRES_PASSWORD:-guia}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-troque-em-producao-com-32-chars-min}
