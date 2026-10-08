@@ -4,6 +4,7 @@ node_modules/
 dist/
 .env
 .vs/
+*.user
 launchSettings.json
 *.log
 *.db

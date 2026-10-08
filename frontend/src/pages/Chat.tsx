@@ -102,9 +102,9 @@ export function Chat() {
                   <div className="rounded-2xl rounded-tl-md bg-[#fff7ec] px-4 py-3 text-sm text-slate-700">
                     <p>{m.text}</p>
                     {m.restaurants && m.restaurants.length > 0 && (
-                      <div className="mt-2 space-y-2">
+                      <div className="mt-3 flex flex-col gap-3">
                         {m.restaurants.map((r) => (
-                          <Link key={r.id} to={`/restaurants/${r.id}`} state={{ from: '/chat' }}>
+                          <Link key={r.id} to={`/restaurants/${r.id}`} state={{ from: '/chat' }} className="block">
                             <RestaurantCard r={r} />
                           </Link>
                         ))}
