@@ -59,18 +59,33 @@ function EmAltaCard({
 export function EmAlta() {
   const [data, setData] = useState<Restaurant[] | null>(null);
   const [error, setError] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
   const { isFav, toggle, favError } = useFavorites();
 
-  const load = useCallback(() => {
+  // Ranking da comunidade (média local). "Ver mais" exclui os exibidos e substitui.
+  const load = useCallback(async (exclude: string[] = []) => {
     setError('');
-    api<Restaurant[]>('/api/discoveries')
-      .then(setData)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Falha ao carregar'));
+    try {
+      const params = new URLSearchParams({ count: '3' });
+      if (exclude.length > 0) params.set('excludeIds', exclude.join(','));
+      setData(await api<Restaurant[]>(`/api/restaurants/top-rated?${params}`));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Falha ao carregar');
+    }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  async function seeMore() {
+    setLoadingMore(true);
+    try {
+      await load((data ?? []).map((r) => r.id));
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <Layout>
@@ -84,15 +99,16 @@ export function EmAlta() {
               Em alta
               <Sparkles className="h-5 w-5 fill-amber-300 text-amber-400" />
             </h1>
-            <p className="mt-0.5 text-[13px] text-slate-400">Baseadas nos seus gostos e avaliações.</p>
+            <p className="mt-0.5 text-[13px] text-slate-400">Os mais bem avaliados pela comunidade.</p>
           </div>
         </div>
         <button
-          onClick={load}
-          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
+          onClick={() => void seeMore()}
+          disabled={loadingMore}
+          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100 disabled:opacity-60"
         >
           <span aria-hidden="true">🧭</span>
-          Ver mais em alta
+          {loadingMore ? 'Buscando...' : 'Ver mais em alta'}
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>

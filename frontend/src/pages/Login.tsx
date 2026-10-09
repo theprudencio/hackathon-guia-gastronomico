@@ -131,7 +131,7 @@ export function Login() {
             </label>
             <button
               type="button"
-              onClick={() => setNotice('Recuperação de senha ainda não disponível na demo — use uma conta demo abaixo.')}
+              onClick={() => setNotice('Recuperação de senha ainda não disponível na demo.')}
               className="font-medium text-[#f04e23] hover:underline"
             >
               Esqueci minha senha
@@ -146,10 +146,6 @@ export function Login() {
           </Link>
         </p>
 
-        <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">
-          <p className="font-bold text-slate-600">Contas demo (senha: demo123)</p>
-          <p className="mt-0.5">Usuário: user@demo.com · Anunciante: anunciante@demo.com</p>
-        </div>
       </div>
     </div>
   );

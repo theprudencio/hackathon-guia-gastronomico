@@ -100,6 +100,13 @@ export function RestaurantDetail() {
   const avg = restaurant?.avgStars ?? restaurant?.rating ?? 0;
   const distance = restaurant ? fmtDistance(restaurant.distanceKm) : null;
   const cuisine = restaurant?.cuisines[0];
+  // Botão do topo acompanha a origem (novidades, em alta ou chat).
+  const moreLink =
+    from === '/news'
+      ? { to: '/news', label: 'Ver mais novidades' }
+      : from === '/chat'
+        ? { to: '/chat', label: 'Voltar ao chat' }
+        : { to: '/em-alta', label: 'Ver mais em alta' };
 
   return (
     <Layout>
@@ -113,11 +120,11 @@ export function RestaurantDetail() {
             Voltar
           </button>
           <Link
-            to="/em-alta"
+            to={moreLink.to}
             className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
           >
             <span aria-hidden="true">🧭</span>
-            Ver mais em alta
+            {moreLink.label}
             <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>

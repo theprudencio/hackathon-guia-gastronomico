@@ -39,6 +39,48 @@ public class RestaurantsController(
         return Ok((await ToDtosAsync([r], null, null)).Single());
     }
 
+    // Em alta: ranking da comunidade (média das avaliações locais).
+    // 3 por vez; excludeIds p/ o "ver mais" trazer outros 3 (substitui os atuais).
+    [HttpGet("top-rated")]
+    public async Task<ActionResult<List<RestaurantDto>>> TopRated(
+        [FromQuery] int count = 3,
+        [FromQuery] string? excludeIds = null,
+        CancellationToken ct = default)
+    {
+        count = Math.Clamp(count, 1, 6);
+        var excluded = (excludeIds ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => Guid.TryParse(s.Trim(), out var g) ? (Guid?)g : null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList();
+
+        var rankedIds = await db.Reviews
+            .GroupBy(r => r.RestaurantId)
+            .Select(g => new { Id = g.Key, Avg = g.Average(r => r.Stars), Count = g.Count() })
+            .Where(x => !excluded.Contains(x.Id))
+            .Join(db.Restaurants, x => x.Id, r => r.Id, (x, r) => new { R = r, x.Avg, x.Count })
+            .OrderByDescending(x => x.Avg)
+            .ThenByDescending(x => x.Count)
+            .ThenByDescending(x => x.R.Rating ?? 0)
+            .ThenBy(x => x.R.Name)
+            .Take(count)
+            .Select(x => x.R.Id)
+            .ToListAsync(ct);
+
+        var restaurants = await db.Restaurants
+            .Where(r => rankedIds.Contains(r.Id))
+            .ToListAsync(ct);
+        var ordered = rankedIds
+            .Join(restaurants, id => id, r => r.Id, (_, r) => r)
+            .ToList();
+
+        var me = CurrentUserId() is Guid uid
+            ? await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == uid, ct)
+            : null;
+        return Ok(await ToDtosAsync(ordered, me?.Latitude, me?.Longitude, ct));
+    }
+
     private Guid? CurrentUserId() =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 

@@ -5,24 +5,35 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GuiaGastronomico.Api.Services;
 
-// 3-4 recomendações/semana: gostos + culinárias bem avaliadas (>=4), via Places.
+// 3 recomendações por vez: gostos + culinárias bem avaliadas (>=4), via Places.
+// excludeIds: p/ "ver mais" trazer 3 novos (ignora cache semanal nesse caso).
 public class DiscoveryService(AppDbContext db, IPlacesService places, ILogger<DiscoveryService> logger)
 {
-    public async Task<List<Restaurant>> GetAsync(Guid userId, CancellationToken ct = default)
+    public async Task<List<Restaurant>> GetAsync(
+        Guid userId,
+        IReadOnlyCollection<Guid>? excludeIds = null,
+        int count = 3,
+        CancellationToken ct = default)
     {
-        var weekStart = WeekStartUtc(DateTime.UtcNow);
+        count = Math.Clamp(count, 1, 6);
+        var excluded = excludeIds?.ToHashSet() ?? new HashSet<Guid>();
 
-        var cache = await db.DiscoveryCaches.FirstOrDefaultAsync(c => c.UserId == userId, ct);
-        if (cache is not null && cache.CreatedAt >= weekStart)
+        // Cache semanal só no carregamento inicial (sem exclusões).
+        if (excluded.Count == 0)
         {
-            var ids = JsonSerializer.Deserialize<List<Guid>>(cache.RestaurantIdsJson) ?? [];
-            if (ids.Count > 0)
+            var weekStart = WeekStartUtc(DateTime.UtcNow);
+            var cache = await db.DiscoveryCaches.FirstOrDefaultAsync(c => c.UserId == userId, ct);
+            if (cache is not null && cache.CreatedAt >= weekStart)
             {
-                var kept = await db.Restaurants.Where(r => ids.Contains(r.Id)).ToListAsync(ct);
-                if (kept.Count > 0)
+                var ids = JsonSerializer.Deserialize<List<Guid>>(cache.RestaurantIdsJson) ?? [];
+                if (ids.Count > 0)
                 {
-                    logger.LogInformation("Discoveries cache hit p/ {User}", userId);
-                    return ids.Join(kept, id => id, r => r.Id, (_, r) => r).ToList();
+                    var kept = await db.Restaurants.Where(r => ids.Contains(r.Id)).ToListAsync(ct);
+                    if (kept.Count > 0)
+                    {
+                        logger.LogInformation("Discoveries cache hit p/ {User}", userId);
+                        return ids.Join(kept, id => id, r => r.Id, (_, r) => r).Take(count).ToList();
+                    }
                 }
             }
         }
@@ -52,12 +63,23 @@ public class DiscoveryService(AppDbContext db, IPlacesService places, ILogger<Di
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var all = new List<Restaurant>();
+        // Pool maior (8 por gosto) p/ ter de onde tirar 3 novos no "ver mais".
         foreach (var q in queries)
         {
-            var res = await places.SearchAsync(q, user.Latitude, user.Longitude, 4, ct);
+            var res = await places.SearchAsync(q, user.Latitude, user.Longitude, 8, ct);
             foreach (var r in res)
             {
-                if (seen.Add(r.PlaceId) && !reviewedIds.Contains(r.Id)) all.Add(r);
+                if (seen.Add(r.PlaceId) && !reviewedIds.Contains(r.Id) && !excluded.Contains(r.Id)) all.Add(r);
+            }
+        }
+
+        // Se ainda faltam inéditos, tenta busca genérica (cobre pool esgotado).
+        if (all.Count < count)
+        {
+            var res = await places.SearchAsync("restaurante", user.Latitude, user.Longitude, 8, ct);
+            foreach (var r in res)
+            {
+                if (seen.Add(r.PlaceId) && !reviewedIds.Contains(r.Id) && !excluded.Contains(r.Id)) all.Add(r);
             }
         }
 
@@ -66,29 +88,33 @@ public class DiscoveryService(AppDbContext db, IPlacesService places, ILogger<Di
             .ThenBy(r => user.Latitude.HasValue && user.Longitude.HasValue
                 ? SeedRestaurants.GeoKm(user.Latitude.Value, user.Longitude.Value, r.Lat, r.Lng)
                 : 0)
-            .Take(4)
+            .Take(count)
             .ToList();
 
-        // Completa até 3 com os melhores ainda não avaliados (cobre base esparsa).
-        if (picked.Count < 3)
+        // Completa com os melhores ainda não avaliados/exibidos (cobre base esparsa).
+        if (picked.Count < count)
         {
             var pickedIds = picked.Select(r => r.Id).ToHashSet();
             var extra = (await db.Restaurants.OrderByDescending(r => r.Rating).Take(20).ToListAsync(ct))
-                .Where(r => !reviewedIds.Contains(r.Id) && !pickedIds.Contains(r.Id))
+                .Where(r => !reviewedIds.Contains(r.Id) && !pickedIds.Contains(r.Id) && !excluded.Contains(r.Id))
                 .Where(r => !user.Latitude.HasValue || !user.Longitude.HasValue
                     || SeedRestaurants.GeoKm(user.Latitude.Value, user.Longitude.Value, r.Lat, r.Lng) <= 10)
-                .Take(3 - picked.Count);
+                .Take(count - picked.Count);
             picked.AddRange(extra);
-            picked = picked.OrderByDescending(r => r.Rating ?? 0).Take(4).ToList();
+            picked = picked.OrderByDescending(r => r.Rating ?? 0).Take(count).ToList();
         }
 
-        db.DiscoveryCaches.RemoveRange(db.DiscoveryCaches.Where(c => c.UserId == userId));
-        db.DiscoveryCaches.Add(new DiscoveryCache
+        // Cache semanal guarda só o lote inicial (refresh não sobrescreve).
+        if (excluded.Count == 0 && picked.Count > 0)
         {
-            UserId = userId,
-            RestaurantIdsJson = JsonSerializer.Serialize(picked.Select(r => r.Id).ToList()),
-        });
-        await db.SaveChangesAsync(ct);
+            db.DiscoveryCaches.RemoveRange(db.DiscoveryCaches.Where(c => c.UserId == userId));
+            db.DiscoveryCaches.Add(new DiscoveryCache
+            {
+                UserId = userId,
+                RestaurantIdsJson = JsonSerializer.Serialize(picked.Select(r => r.Id).ToList()),
+            });
+            await db.SaveChangesAsync(ct);
+        }
 
         return picked;
     }

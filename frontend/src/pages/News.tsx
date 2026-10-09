@@ -193,6 +193,47 @@ function PromoModal({
     </div>
   );
 }
+/** Card dos 3 restaurantes pelos gostos (com foto, nome e tags). */
+function TastyCard({
+  r,
+  fav,
+  onToggleFav,
+}: {
+  r: Restaurant;
+  fav: boolean;
+  onToggleFav: () => void;
+}) {
+  const cuisine = r.cuisines[0];
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+      <div className="relative p-2 pb-0">
+        <CoverPhoto r={r} />
+        {r.rating != null && <RatingBadge value={r.rating} className="absolute right-4 top-4" />}
+        {cuisine && <CuisinePill cuisine={cuisine} className="absolute bottom-3 left-5" />}
+        <FavButton
+          fav={fav}
+          onToggle={onToggleFav}
+          className="absolute -bottom-5 right-5 z-10"
+        />
+      </div>
+
+      <div className="p-4 pt-7">
+        <h3 className="text-[15px] font-bold text-slate-800">{r.name}</h3>
+        <div className="mt-1">
+          <AddressLine address={r.address} />
+        </div>
+        <div className="mt-1.5">
+          <ReviewsLine r={r} />
+        </div>
+        <div className="mt-3">
+          <MetaChips r={r} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const inputCls =
   'w-full rounded-xl border border-slate-100 bg-[#f7f8fa] p-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-orange-300';
 
@@ -202,6 +243,11 @@ export function News() {
   const [promos, setPromos] = useState<Promotion[] | null>(null);
   const [error, setError] = useState('');
   const { isFav, toggle, favError } = useFavorites();
+
+  // 3 restaurantes pelos gostos do cliente (via Google Places no back).
+  const [tasty, setTasty] = useState<Restaurant[] | null>(null);
+  const [tastyLoading, setTastyLoading] = useState(false);
+  const [tastyError, setTastyError] = useState('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -227,7 +273,27 @@ export function News() {
 
   useEffect(() => {
     void load();
+    void loadTasty();
   }, []);
+
+  async function loadTasty(exclude: string[] = []) {
+    setTastyLoading(true);
+    setTastyError('');
+    try {
+      const params = new URLSearchParams({ count: '3' });
+      if (exclude.length > 0) params.set('excludeIds', exclude.join(','));
+      setTasty(await api<Restaurant[]>(`/api/discoveries?${params}`));
+    } catch (err: unknown) {
+      setTastyError(err instanceof Error ? err.message : 'Falha ao carregar');
+    } finally {
+      setTastyLoading(false);
+    }
+  }
+
+  // "Ver mais novidades": substitui os 3 atuais por 3 novos (exclui os exibidos).
+  async function seeMore() {
+    await Promise.all([loadTasty((tasty ?? []).map((r) => r.id)), load()]);
+  }
 
   async function search() {
     if (!q.trim()) return;
@@ -284,13 +350,60 @@ export function News() {
           </div>
         </div>
         <button
-          onClick={() => void load()}
-          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
+          onClick={() => void seeMore()}
+          disabled={tastyLoading}
+          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100 disabled:opacity-60"
         >
           <span aria-hidden="true">🧭</span>
-          Ver mais novidades
+          {tastyLoading ? 'Buscando...' : 'Ver mais novidades'}
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
+      </div>
+
+      {/* 3 restaurantes pelos gostos do cliente — ver mais substitui pelos 3 novos */}
+      <div className="mt-2">
+        <h2 className="text-[15px] font-bold text-slate-800">Feito para você 🍽️</h2>
+        <p className="mt-0.5 text-[13px] text-slate-400">Com base nos seus gostos.</p>
+      </div>
+      {tastyError && <p className="mt-3 text-sm text-red-600">{tastyError}</p>}
+      <div className="mt-3 grid gap-4 md:grid-cols-3">
+        {tasty === null && !tastyError && (
+          <>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                <div className="p-2 pb-0">
+                  <div className="aspect-video w-full animate-pulse rounded-xl bg-orange-100" />
+                </div>
+                <div className="space-y-2 p-4">
+                  <div className="h-4 w-2/3 animate-pulse rounded bg-neutral-200" />
+                  <div className="h-3 w-full animate-pulse rounded bg-neutral-100" />
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+        {tasty?.length === 0 && (
+          <p className="text-center text-sm text-neutral-500 md:col-span-3">
+            Nada por aqui ainda. Complete o onboarding e avalie alguns lugares!
+          </p>
+        )}
+        {tasty?.map((r) => (
+          <Link
+            key={r.id}
+            to={`/restaurants/${r.id}`}
+            state={{ from: '/news' }}
+            className="block cursor-pointer rounded-2xl transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 active:scale-[0.99]"
+          >
+            <TastyCard r={r} fav={isFav(r)} onToggleFav={() => toggle(r)} />
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-6 flex items-start gap-3">
+        <div>
+          <h2 className="text-[15px] font-bold text-slate-800">Patrocinados 📢</h2>
+          <p className="mt-0.5 text-[13px] text-slate-400">Restaurantes em destaque (patrocinados).</p>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

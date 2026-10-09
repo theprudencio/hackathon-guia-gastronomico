@@ -18,12 +18,22 @@ public class DiscoveriesController(
     FavoriteService favorites) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<RestaurantDto>>> Get(CancellationToken ct)
+    public async Task<ActionResult<List<RestaurantDto>>> Get(
+        [FromQuery] int count = 3,
+        [FromQuery] string? excludeIds = null,
+        CancellationToken ct = default)
     {
         if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
             return Unauthorized();
 
-        var list = await discoveries.GetAsync(userId, ct);
+        var excluded = (excludeIds ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => Guid.TryParse(s.Trim(), out var g) ? (Guid?)g : null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToList();
+
+        var list = await discoveries.GetAsync(userId, excluded, count, ct);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
         var stats = await reviews.StatsAsync(list.Select(r => r.Id), ct);
         var favs = await favorites.IdsAsync(userId, ct);
