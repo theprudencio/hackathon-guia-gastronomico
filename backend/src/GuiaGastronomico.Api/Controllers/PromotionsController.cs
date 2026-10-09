@@ -11,7 +11,7 @@ namespace GuiaGastronomico.Api.Controllers;
 
 [ApiController]
 [Route("api/promotions")]
-public class PromotionsController(AppDbContext db, ReviewService reviews) : ControllerBase
+public class PromotionsController(AppDbContext db, ReviewService reviews, FavoriteService favorites) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -24,7 +24,9 @@ public class PromotionsController(AppDbContext db, ReviewService reviews) : Cont
             .OrderByDescending(p => p.StartsAt)
             .ToListAsync(ct);
         var stats = await reviews.StatsAsync(items.Select(i => i.RestaurantId), ct);
-        return Ok(items.Select(p => ToDto(p, stats)).ToList());
+        Guid? userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        var favs = await favorites.IdsAsync(userId, ct);
+        return Ok(items.Select(p => ToDto(p, stats, favs)).ToList());
     }
 
     // Checkout SIMULADO: grava Status = Paid direto.
@@ -80,10 +82,11 @@ public class PromotionsController(AppDbContext db, ReviewService reviews) : Cont
         var advertiser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == advertiserId, ct);
         promo.Advertiser = advertiser;
         var stats = await reviews.StatsAsync([restaurant.Id], ct);
-        return Created($"/api/promotions/{promo.Id}", ToDto(promo, stats));
+        var favs = await favorites.IdsAsync(advertiserId, ct);
+        return Created($"/api/promotions/{promo.Id}", ToDto(promo, stats, favs));
     }
 
-    private static PromotionDto ToDto(Promotion p, Dictionary<Guid, (double? avg, int count)> stats)
+    private static PromotionDto ToDto(Promotion p, Dictionary<Guid, (double? avg, int count)> stats, HashSet<Guid> favs)
     {
         var r = p.Restaurant!;
         stats.TryGetValue(r.Id, out var s);
@@ -91,6 +94,6 @@ public class PromotionsController(AppDbContext db, ReviewService reviews) : Cont
             p.Id, p.Title, p.Description, p.Plan, PromotionPlans.Label(p.Plan),
             p.Status, p.StartsAt, p.EndsAt, p.Advertiser?.Name ?? "Anunciante",
             new RestaurantDto(r.Id, r.PlaceId, r.Name, r.Address, r.Lat, r.Lng,
-                r.Rating, r.PriceLevel, RestaurantDtoMapper.PhotosOf(r), r.Cuisines, null, s.avg, s.count));
+                r.Rating, r.PriceLevel, RestaurantDtoMapper.PhotosOf(r), r.Cuisines, null, s.avg, s.count, favs.Contains(r.Id)));
     }
 }

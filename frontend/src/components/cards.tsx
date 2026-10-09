@@ -1,4 +1,3 @@
-import { useCallback, useState } from 'react';
 import { CircleDollarSign, Heart, MapPin, Star, UtensilsCrossed } from 'lucide-react';
 import { PhotoCarousel } from './PhotoCarousel';
 import type { Restaurant } from './RestaurantCard';
@@ -37,31 +36,6 @@ export function cuisineIcon(cuisine: string): string {
 export function fmtDistance(km: number | null): string | null {
   if (km == null) return null;
   return `${Math.round(km * 10) / 10} km`;
-}
-
-/** Favoritos locais (sem backend): gg_favs no localStorage. */
-export function useFavs() {
-  const [favs, setFavs] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('gg_favs') ?? '[]') as string[];
-    } catch {
-      return [];
-    }
-  });
-
-  const toggle = useCallback((id: string) => {
-    setFavs((prev) => {
-      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
-      try {
-        localStorage.setItem('gg_favs', JSON.stringify(next));
-      } catch {
-        /* storage bloqueado: segue só em memória */
-      }
-      return next;
-    });
-  }, []);
-
-  return { favs, toggle };
 }
 
 /** Foto default exibida enquanto a API de fotos não entra. */
@@ -113,9 +87,13 @@ export function FavButton({
         e.stopPropagation();
         onToggle();
       }}
-      className={`flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 transition hover:bg-orange-100 ${className}`}
+      className={`flex h-10 min-h-[40px] w-10 min-w-[40px] items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 active:scale-90 ${className}`}
     >
-      <Heart className={`h-[18px] w-[18px] text-[#f04e23] ${fav ? 'fill-[#f04e23]' : ''}`} />
+      <Heart
+        className={`h-5 w-5 transition-transform active:scale-110 ${
+          fav ? 'fill-[#f04e23] text-[#f04e23]' : 'text-[#f04e23]'
+        }`}
+      />
     </button>
   );
 }

@@ -11,6 +11,7 @@ public class ChatOrchestrator(
     IPlacesService places,
     ILlmService llm,
     ReviewService reviews,
+    FavoriteService favorites,
     ILogger<ChatOrchestrator> logger)
 {
     private static readonly string[] KnownCuisines =
@@ -35,7 +36,7 @@ public class ChatOrchestrator(
             // Plano B: sem chave de LLM, busca direta + resposta modelo.
             found = await places.SearchAsync(BuildQuery(message, tastes), lat, lng, 3, ct);
             reply = BuildFallbackReply(message, tastes, found);
-            return await ToResponseAsync(reply, found, lat, lng, ct);
+            return await ToResponseAsync(userId, reply, found, lat, lng, ct);
         }
 
         try
@@ -55,7 +56,7 @@ public class ChatOrchestrator(
                 reply = string.IsNullOrWhiteSpace(turn.Content)
                     ? BuildFallbackReply(message, tastes, found)
                     : turn.Content;
-                return await ToResponseAsync(reply, found, lat, lng, ct);
+                return await ToResponseAsync(userId, reply, found, lat, lng, ct);
             }
 
             var (consulta, max) = ParseToolArgs(turn.ToolCall.Arguments, message);
@@ -69,19 +70,19 @@ public class ChatOrchestrator(
                 ? BuildFallbackReply(message, tastes, found)
                 : final.Content;
 
-            return await ToResponseAsync(reply, found.Take(3).ToList(), lat, lng, ct);
+            return await ToResponseAsync(userId, reply, found.Take(3).ToList(), lat, lng, ct);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Chat LLM falhou, usando fallback.");
             found = await places.SearchAsync(BuildQuery(message, tastes), lat, lng, 3, ct);
-            return await ToResponseAsync(BuildFallbackReply(message, tastes, found), found, lat, lng, ct);
+            return await ToResponseAsync(userId, BuildFallbackReply(message, tastes, found), found, lat, lng, ct);
         }
     }
 
     private static string SystemPrompt(List<string> tastes, string? location, double? lat, double? lng) =>
         $"""
-        Você é o assistente do app Guia Gastronômico. Responda em português do Brasil, de forma curta e amigável (máx. 4 frases).
+        Você é o assistente do app Zup. Responda em português do Brasil, de forma curta e amigável (máx. 4 frases).
         Gostos do usuário: {(tastes.Count > 0 ? string.Join(", ", tastes) : "não informados")}.
         Localização: {(location ?? (lat.HasValue ? $"{lat},{lng}" : "não informada"))}.
         Regras:
@@ -144,11 +145,12 @@ public class ChatOrchestrator(
         return $"Achei {found.Count} opção(ões) pra \"{message}\"{taste}: {names}. Bom apetite! 😋";
     }
 
-    private async Task<ChatResponse> ToResponseAsync(string reply, List<Restaurant> list,
+    private async Task<ChatResponse> ToResponseAsync(Guid userId, string reply, List<Restaurant> list,
         double? lat, double? lng, CancellationToken ct)
     {
         var top = list.Take(3).ToList();
         var stats = await reviews.StatsAsync(top.Select(r => r.Id), ct);
+        var favs = await favorites.IdsAsync(userId, ct);
         return new ChatResponse(reply, top.Select(r =>
         {
             stats.TryGetValue(r.Id, out var s);
@@ -158,7 +160,7 @@ public class ChatOrchestrator(
                 lat.HasValue && lng.HasValue
                     ? Math.Round(Data.SeedRestaurants.GeoKm(lat.Value, lng.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count);
+                s.avg, s.count, favs.Contains(r.Id));
         }).ToList());
     }
 }

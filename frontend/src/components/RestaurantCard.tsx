@@ -1,3 +1,4 @@
+import { FavButton } from './cards';
 import { PhotoCarousel } from './PhotoCarousel';
 import type { CarouselPhoto } from './PhotoCarousel';
 
@@ -15,13 +16,31 @@ export interface Restaurant {
   distanceKm: number | null;
   avgStars: number | null;
   reviewsCount: number;
+  isFavorite: boolean;
 }
 
-export function RestaurantCard({ r, photoW = 600 }: { r: Restaurant; photoW?: number }) {
+export function RestaurantCard({
+  r,
+  photoW = 600,
+  fav,
+  onToggleFav,
+}: {
+  r: Restaurant;
+  photoW?: number;
+  fav?: boolean;
+  onToggleFav?: (id: string) => void;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
       <div className="relative">
         <PhotoCarousel photos={r.photos} alt={r.name} w={photoW} />
+        {onToggleFav && (
+          <FavButton
+            fav={fav ?? r.isFavorite}
+            onToggle={() => onToggleFav(r.id)}
+            className="absolute left-2 top-2 z-10"
+          />
+        )}
         {r.rating != null && (
           <span className="absolute right-2 top-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
             ★ {r.rating.toFixed(1)}

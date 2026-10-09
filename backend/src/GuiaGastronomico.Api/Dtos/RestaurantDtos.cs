@@ -24,7 +24,8 @@ public record RestaurantDto(
     List<string> Cuisines,
     double? DistanceKm,
     double? AvgStars,
-    int ReviewsCount);
+    int ReviewsCount,
+    bool IsFavorite = false);
 
 public static class RestaurantDtoMapper
 {

@@ -18,7 +18,7 @@ export function Register() {
     setBusy(true);
     try {
       await register(name, email, password, role);
-      nav('/');
+      nav('/em-alta');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Falha no cadastro');
     } finally {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Sparkles, UtensilsCrossed } from 'lucide-react';
 import { api } from '../api/client';
+import { useFavorites } from '../api/favorites';
 import { Layout } from '../components/Layout';
 import {
   AddressLine,
@@ -11,18 +12,17 @@ import {
   MetaChips,
   RatingBadge,
   ReviewsLine,
-  useFavs,
 } from '../components/cards';
 import type { Restaurant } from '../components/RestaurantCard';
 
-function DiscoveryCard({
+function EmAltaCard({
   r,
   fav,
   onToggleFav,
 }: {
   r: Restaurant;
   fav: boolean;
-  onToggleFav: (id: string) => void;
+  onToggleFav: () => void;
 }) {
   const cuisine = r.cuisines[0];
 
@@ -37,7 +37,7 @@ function DiscoveryCard({
       <div className="p-4 pt-3">
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-[15px] font-bold text-slate-800">{r.name}</h2>
-          <FavButton fav={fav} onToggle={() => onToggleFav(r.id)} className="shrink-0" />
+          <FavButton fav={fav} onToggle={onToggleFav} className="shrink-0" />
         </div>
 
         <div className="mt-1">
@@ -56,10 +56,10 @@ function DiscoveryCard({
   );
 }
 
-export function Discoveries() {
+export function EmAlta() {
   const [data, setData] = useState<Restaurant[] | null>(null);
   const [error, setError] = useState('');
-  const { favs, toggle } = useFavs();
+  const { isFav, toggle, favError } = useFavorites();
 
   const load = useCallback(() => {
     setError('');
@@ -81,7 +81,7 @@ export function Discoveries() {
           </span>
           <div>
             <h1 className="flex items-center gap-1.5 text-xl font-extrabold text-slate-800">
-              Descobertas da semana
+              Em alta
               <Sparkles className="h-5 w-5 fill-amber-300 text-amber-400" />
             </h1>
             <p className="mt-0.5 text-[13px] text-slate-400">Baseadas nos seus gostos e avaliações.</p>
@@ -92,12 +92,13 @@ export function Discoveries() {
           className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
         >
           <span aria-hidden="true">🧭</span>
-          Ver mais descobertas
+          Ver mais em alta
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
+        {favError && <p className="text-center text-sm text-red-600 md:col-span-2">{favError}</p>}
         {error && <p className="text-center text-sm text-red-600 md:col-span-2">{error}</p>}
         {data === null && !error && (
           <>
@@ -120,8 +121,13 @@ export function Discoveries() {
           </p>
         )}
         {data?.map((r) => (
-          <Link key={r.id} to={`/restaurants/${r.id}`} state={{ from: '/discoveries' }}>
-            <DiscoveryCard r={r} fav={favs.includes(r.id)} onToggleFav={toggle} />
+          <Link
+            key={r.id}
+            to={`/restaurants/${r.id}`}
+            state={{ from: '/em-alta' }}
+            className="block cursor-pointer rounded-2xl transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 active:scale-[0.99]"
+          >
+            <EmAltaCard r={r} fav={isFav(r)} onToggleFav={() => toggle(r)} />
           </Link>
         ))}
       </div>

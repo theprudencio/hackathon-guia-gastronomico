@@ -40,6 +40,7 @@ builder.Services.AddHttpClient<ILlmService, LlmService>();
 builder.Services.AddScoped<ChatOrchestrator>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<DiscoveryService>();
+builder.Services.AddScoped<FavoriteService>();
 
 // Demo local sem Docker: DB_PROVIDER=sqlite usa arquivo local. Padrão: Postgres.
 var useSqlite = (Environment.GetEnvironmentVariable("DB_PROVIDER") ?? builder.Configuration["DbProvider"] ?? "")
@@ -76,7 +77,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Guia Gastronômico API", Version = "v1" });
+    c.SwaggerDoc("v1", new() { Title = "Zup API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",

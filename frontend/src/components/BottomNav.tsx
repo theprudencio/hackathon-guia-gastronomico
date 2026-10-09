@@ -10,9 +10,9 @@ interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Perfil', Icon: User, color: 'text-[#f04e23]' },
+  { to: '/perfil', label: 'Perfil', Icon: User, color: 'text-[#f04e23]' },
   { to: '/chat', label: 'Chat', Icon: MessageCircle, color: 'text-purple-500' },
-  { to: '/discoveries', label: 'Descobertas', Icon: Sparkles, color: 'text-amber-500' },
+  { to: '/em-alta', label: 'Em alta', Icon: Sparkles, color: 'text-amber-500' },
   { to: '/news', label: 'Novidades', Icon: Megaphone, color: 'text-red-500' },
 ];
 
@@ -24,7 +24,7 @@ export function BottomNav() {
           <NavLink
             key={it.to}
             to={it.to}
-            end={it.to === '/'}
+            end
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] ${
                 isActive ? 'bg-orange-100 font-bold text-[#f04e23]' : 'text-neutral-500'

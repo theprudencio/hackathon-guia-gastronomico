@@ -43,6 +43,10 @@ public class MeController(AppDbContext db) : ControllerBase
         user.Longitude = req.Longitude;
         user.LocationLabel = string.IsNullOrWhiteSpace(req.LocationLabel) ? null : req.LocationLabel.Trim();
 
+        // Coordenadas sem nome legível não valem: a UI nunca exibe lat/lng.
+        if ((user.Latitude.HasValue || user.Longitude.HasValue) && user.LocationLabel is null)
+            return BadRequest(new { message = "Informe o nome da sua cidade ou bairro." });
+
         db.UserCuisines.RemoveRange(user.Cuisines);
         user.Cuisines = cuisines.Select(c => new UserCuisine { UserId = user.Id, Cuisine = c }).ToList();
 

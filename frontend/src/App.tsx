@@ -5,10 +5,10 @@ import { ChatProvider } from './chat/ChatContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { Home } from './pages/Home';
+import { Profile } from './pages/Profile';
 import { Onboarding } from './pages/Onboarding';
 import { Chat } from './pages/Chat';
-import { Discoveries } from './pages/Discoveries';
+import { EmAlta } from './pages/EmAlta';
 import { News } from './pages/News';
 import { RestaurantDetail } from './pages/RestaurantDetail';
 
@@ -40,13 +40,14 @@ export function App() {
               }
             />
             <Route
-              path="/discoveries"
+              path="/em-alta"
               element={
                 <ProtectedRoute>
-                  <Discoveries />
+                  <EmAlta />
                 </ProtectedRoute>
               }
             />
+            <Route path="/discoveries" element={<Navigate to="/em-alta" replace />} />
             <Route
               path="/restaurants/:id"
               element={
@@ -64,13 +65,14 @@ export function App() {
               }
             />
             <Route
-              path="/"
+              path="/perfil"
               element={
                 <ProtectedRoute>
-                  <Home />
+                  <Profile />
                 </ProtectedRoute>
               }
             />
+            <Route path="/" element={<Navigate to="/em-alta" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Megaphone, Star } from 'lucide-react';
+import { CalendarDays, ChevronRight, Megaphone, Star, X } from 'lucide-react';
 import { api } from '../api/client';
+import { useFavorites } from '../api/favorites';
 import { useAuth } from '../auth/AuthContext';
 import { Layout } from '../components/Layout';
 import {
@@ -12,7 +13,6 @@ import {
   MetaChips,
   RatingBadge,
   ReviewsLine,
-  useFavs,
 } from '../components/cards';
 import type { Restaurant } from '../components/RestaurantCard';
 import { CUISINES } from '../lib/cuisines';
@@ -23,6 +23,7 @@ interface Promotion {
   description: string | null;
   plan: string;
   planLabel: string;
+  startsAt: string;
   endsAt: string;
   advertiserName: string;
   restaurant: Restaurant;
@@ -35,7 +36,7 @@ function PromoCard({
 }: {
   p: Promotion;
   fav: boolean;
-  onToggleFav: (id: string) => void;
+  onToggleFav: () => void;
 }) {
   const r = p.restaurant;
   const cuisine = r.cuisines[0];
@@ -52,8 +53,8 @@ function PromoCard({
         {cuisine && <CuisinePill cuisine={cuisine} className="absolute bottom-3 left-5" />}
         <FavButton
           fav={fav}
-          onToggle={() => onToggleFav(r.id)}
-          className="absolute -bottom-5 right-5 h-10 w-10 bg-white shadow-md hover:bg-orange-50"
+          onToggle={onToggleFav}
+          className="absolute -bottom-5 right-5 z-10"
         />
       </div>
 
@@ -83,6 +84,115 @@ function PromoCard({
   );
 }
 
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+/** Detalhe do anúncio: bottom-sheet no celular, centralizado no desktop. */
+function PromoModal({
+  p,
+  fav,
+  onToggleFav,
+  onClose,
+}: {
+  p: Promotion;
+  fav: boolean;
+  onToggleFav: () => void;
+  onClose: () => void;
+}) {
+  const r = p.restaurant;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Anúncio: ${p.title}`}
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <span className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-300 px-3 py-1 text-[11px] font-bold text-white shadow">
+            <Star className="h-3.5 w-3.5" />
+            PATROCINADO · {p.planLabel}
+          </span>
+          <div className="flex shrink-0 items-center gap-2">
+            <FavButton fav={fav} onToggle={onToggleFav} />
+            <button
+              type="button"
+              autoFocus
+              onClick={onClose}
+              aria-label="Fechar detalhe do anúncio"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <h2 className="mt-3 text-lg font-extrabold text-slate-800">{p.title}</h2>
+        {p.description && <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{p.description}</p>}
+
+        <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-orange-50/70 px-3 py-2 text-xs text-slate-500">
+          <CalendarDays className="h-4 w-4 shrink-0 text-[#f04e23]" />
+          Válido de {fmtDate(p.startsAt)} até {fmtDate(p.endsAt)} · por {p.advertiserName}
+        </p>
+
+        <div className="mt-4 rounded-2xl border border-slate-100 p-3">
+          <div className="relative">
+            <CoverPhoto r={r} />
+            {r.rating != null && <RatingBadge value={r.rating} className="absolute right-2 top-2" />}
+          </div>
+          <p className="mt-2 text-[15px] font-bold text-slate-800">{r.name}</p>
+          <div className="mt-1">
+            <AddressLine address={r.address} />
+          </div>
+          <div className="mt-1.5">
+            <ReviewsLine r={r} />
+          </div>
+          <div className="mt-2.5">
+            <MetaChips r={r} />
+          </div>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Link
+            to={`/restaurants/${r.id}`}
+            state={{ from: '/news' }}
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#f04e23] text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(240,78,35,0.35)] transition hover:bg-[#d9441b]"
+          >
+            Ver restaurante
+            <ChevronRight className="h-[18px] w-[18px]" />
+          </Link>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-12 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 const inputCls =
   'w-full rounded-xl border border-slate-100 bg-[#f7f8fa] p-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-orange-300';
 
@@ -91,7 +201,7 @@ export function News() {
   const isAdv = user?.role === 'Advertiser';
   const [promos, setPromos] = useState<Promotion[] | null>(null);
   const [error, setError] = useState('');
-  const { favs, toggle } = useFavs();
+  const { isFav, toggle, favError } = useFavorites();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -105,6 +215,7 @@ export function News() {
   const [newCuisine, setNewCuisine] = useState('italiana');
   const [saving, setSaving] = useState(false);
   const [formMsg, setFormMsg] = useState('');
+  const [selected, setSelected] = useState<Promotion | null>(null);
 
   async function load() {
     try {
@@ -183,6 +294,7 @@ export function News() {
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {favError && <p className="mt-2 text-sm text-red-600">{favError}</p>}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {promos === null && !error && (
           <>
@@ -205,11 +317,35 @@ export function News() {
           </p>
         )}
         {promos?.map((p) => (
-          <Link key={p.id} to={`/restaurants/${p.restaurant.id}`} state={{ from: '/news' }}>
-            <PromoCard p={p} fav={favs.includes(p.restaurant.id)} onToggleFav={toggle} />
-          </Link>
+          <div
+            key={p.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Ver anúncio: ${p.title}`}
+            onClick={() => setSelected(p)}
+            onKeyDown={(e) => {
+              // Tecla no coração (foco interno) só alterna o favorito, sem abrir o modal.
+              if (e.target !== e.currentTarget) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelected(p);
+              }
+            }}
+            className="block cursor-pointer rounded-2xl transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 active:scale-[0.99]"
+          >
+            <PromoCard p={p} fav={isFav(p.restaurant)} onToggleFav={() => toggle(p.restaurant)} />
+          </div>
         ))}
       </div>
+
+      {selected && (
+        <PromoModal
+          p={selected}
+          fav={isFav(selected.restaurant)}
+          onToggleFav={() => toggle(selected.restaurant)}
+          onClose={() => setSelected(null)}
+        />
+      )}
 
       {isAdv && (
         <div className="mt-6 rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">

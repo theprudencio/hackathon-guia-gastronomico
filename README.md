@@ -1,4 +1,4 @@
-# Guia Gastronômico — Fase 1
+# Zup — Fase 1
 
 Base do MVP: auth JWT + rotas protegidas.
 
@@ -38,7 +38,7 @@ Sem Docker: rode o Postgres local e `dotnet run --project backend/src/GuiaGastro
 
 Contas demo (senha `demo123`): `user@demo.com` (User), `anunciante@demo.com` (Advertiser). Seed automático no startup: 15 restaurantes (SP), 2 promoções ativas. Sem `GOOGLE_PLACES_KEY`/`LLM_API_KEY`, a demo roda 100% no fallback.
 
-Front: `/chat`, `/discoveries`, `/news` (+ formulário do anunciante), `/restaurants/:id`, `/onboarding`. BottomNav no mobile, sidebar no desktop.
+Front: `/chat`, `/em-alta`, `/news` (+ formulário do anunciante), `/restaurants/:id`, `/onboarding`, `/perfil`. BottomNav no mobile, sidebar no desktop.
 
 Sem `GOOGLE_PLACES_KEY`, o `PlacesService` usa cache local + fallback (15 restaurantes de exemplo em SP). Com a chave, chama Text Search (New) com `locationBias` de 3 km e `FieldMask` mínimo, com cache de 12h (`Google:CacheHours`).
 

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GuiaGastronomico.Api.Data;
 using GuiaGastronomico.Api.Domain;
 using GuiaGastronomico.Api.Dtos;
@@ -14,7 +15,8 @@ namespace GuiaGastronomico.Api.Controllers;
 public class RestaurantsController(
     AppDbContext db,
     IPlacesService places,
-    ReviewService reviews) : ControllerBase
+    ReviewService reviews,
+    FavoriteService favorites) : ControllerBase
 {
     // Prévia p/ onboarding + debug (o chat usa o mesmo serviço).
     [HttpGet("search")]
@@ -37,10 +39,14 @@ public class RestaurantsController(
         return Ok((await ToDtosAsync([r], null, null)).Single());
     }
 
+    private Guid? CurrentUserId() =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+
     private async Task<List<RestaurantDto>> ToDtosAsync(
         List<Restaurant> list, double? lat, double? lng, CancellationToken ct = default)
     {
         var stats = await reviews.StatsAsync(list.Select(r => r.Id), ct);
+        var favs = await favorites.IdsAsync(CurrentUserId(), ct);
         return list.Select(r =>
         {
             stats.TryGetValue(r.Id, out var s);
@@ -50,7 +56,7 @@ public class RestaurantsController(
                 lat.HasValue && lng.HasValue
                     ? Math.Round(Data.SeedRestaurants.GeoKm(lat.Value, lng.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count);
+                s.avg, s.count, favs.Contains(r.Id));
         }).ToList();
     }
 }

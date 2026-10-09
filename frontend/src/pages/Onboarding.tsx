@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
+  ArrowLeft,
   Building2,
   Check,
   ChevronDown,
   ChevronRight,
-  CircleCheck,
-  Crosshair,
   Eye,
   EyeOff,
   LocateFixed,
@@ -143,6 +142,10 @@ export function Onboarding() {
       setError('Escolha pelo menos um gosto.');
       return;
     }
+    if ((lat != null || lng != null) && !label.trim()) {
+      setError('Digite o nome da sua cidade ou bairro para concluir.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -156,7 +159,7 @@ export function Onboarding() {
         }),
       });
       await refresh();
-      nav('/');
+      nav('/em-alta');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Falha ao salvar');
     } finally {
@@ -172,6 +175,17 @@ export function Onboarding() {
       <div className="pointer-events-none absolute -right-16 bottom-40 h-56 w-56 rounded-full bg-orange-50" />
 
       <div className="relative mx-auto w-full max-w-md px-4 pb-10 pt-6">
+        {/* voltar fixo */}
+        <div className="sticky top-0 z-10 -mx-4 bg-[#fff6ea]/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
+          <button
+            onClick={() => nav(-1)}
+            className="flex items-center gap-1 text-sm font-semibold text-[#f04e23] hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+        </div>
+
         {/* topo localização */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -183,9 +197,6 @@ export function Onboarding() {
               Usamos isso para buscar restaurantes perto de você.
             </p>
           </div>
-          <p className="hidden max-w-[130px] rotate-3 text-right text-[11px] italic leading-snug text-orange-400 min-[400px]:block" aria-hidden="true">
-            Cidade boa também é feita de bons sabores ♥
-          </p>
         </div>
 
         {/* cartão localização */}
@@ -206,50 +217,17 @@ export function Onboarding() {
             </span>
             <input
               className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
-              placeholder="Av. Paulista, São Paulo"
+              placeholder="Sua cidade ou bairro (ex.: Santos, SP)"
+              aria-label="Sua cidade ou bairro"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
           </label>
 
-          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-            <label className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3e2]">
-                <Crosshair className="h-4 w-4 text-[#f04e23]" />
-              </span>
-              <span className="min-w-0">
-                <input
-                  className="w-full bg-transparent text-[13px] font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-                  placeholder="-23.5614"
-                  inputMode="decimal"
-                  value={lat ?? ''}
-                  onChange={(e) => setLat(e.target.value === '' ? null : Number(e.target.value))}
-                />
-                <span className="block text-[11px] text-slate-400">Latitude</span>
-              </span>
-            </label>
-            <label className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff3e2]">
-                <Crosshair className="h-4 w-4 text-[#f04e23]" />
-              </span>
-              <span className="min-w-0">
-                <input
-                  className="w-full bg-transparent text-[13px] font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-                  placeholder="-46.6550"
-                  inputMode="decimal"
-                  value={lng ?? ''}
-                  onChange={(e) => setLng(e.target.value === '' ? null : Number(e.target.value))}
-                />
-                <span className="block text-[11px] text-slate-400">Longitude</span>
-              </span>
-            </label>
-          </div>
-
           {lat != null && lng != null && (
-            <p className="flex items-center gap-1.5 px-1.5 pb-1 pt-2.5 text-xs font-medium text-emerald-600">
-              <CircleCheck className="h-4 w-4 fill-emerald-500 text-white" />
-              Localização definida: {lat.toFixed(4)}, {lng.toFixed(4)}
+            <p className="px-1.5 pb-1 pt-2.5 text-xs font-medium text-emerald-600">
+              Localização ativada — vamos buscar perto de você.
             </p>
           )}
         </div>
@@ -323,12 +301,21 @@ export function Onboarding() {
           {preview.length > 0 && (
             <ul className="mt-3 flex flex-col gap-2">
               {preview.map((r) => (
-                <li key={r.id} className="rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm">
-                  <strong className="text-slate-800">{r.name}</strong>
-                  <span className="ml-2 text-slate-400">
-                    {r.rating ? `★ ${r.rating}` : ''} {r.distanceKm != null ? `· ${r.distanceKm} km` : ''}
-                  </span>
-                  <p className="mt-0.5 text-slate-500">{r.address}</p>
+                <li key={r.id}>
+                  <Link
+                    to={`/restaurants/${r.id}`}
+                    state={{ from: '/onboarding' }}
+                    className="block cursor-pointer rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm transition hover:border-orange-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 active:scale-[0.99]"
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <strong className="text-slate-800">{r.name}</strong>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                    </span>
+                    <span className="mt-0.5 block text-slate-400">
+                      {r.rating ? `★ ${r.rating}` : ''} {r.distanceKm != null ? `· ${r.distanceKm} km` : ''}
+                    </span>
+                    <span className="mt-0.5 block text-slate-500">{r.address}</span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -343,10 +330,6 @@ export function Onboarding() {
             {saving ? 'Salvando...' : 'Continuar'}
           </button>
         </div>
-
-        <p className="mt-3 text-right text-[11px] italic text-orange-400" aria-hidden="true">
-          Boas escolhas começam aqui ♥
-        </p>
       </div>
     </div>
   );

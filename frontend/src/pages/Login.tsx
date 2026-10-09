@@ -2,22 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { PenguinMascot } from '../components/Mascot';
-
-/** Garfo branco sobre pino laranja (logo). */
-function ForkMark() {
-  return (
-    <span className="flex h-12 w-12 items-center justify-center rounded-full rounded-bl-none bg-[#f04e23]">
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
-        <line x1="12" y1="10" x2="12" y2="21" />
-        <line x1="7.5" y1="3" x2="7.5" y2="10" />
-        <line x1="12" y1="2" x2="12" y2="10" />
-        <line x1="16.5" y1="3" x2="16.5" y2="10" />
-        <path d="M7.5 10 h9" />
-      </svg>
-    </span>
-  );
-}
 
 export function Login() {
   const { login } = useAuth();
@@ -37,7 +21,7 @@ export function Login() {
     setBusy(true);
     try {
       await login(email, password, remember);
-      nav('/');
+      nav('/em-alta');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Falha no login');
     } finally {
@@ -63,11 +47,14 @@ export function Login() {
         <span className="absolute right-6 top-16 text-lg text-orange-300">♡</span>
 
         <div className="relative mx-auto flex w-full max-w-sm items-center gap-3 px-5 pb-4 pt-7">
-          <PenguinMascot />
+          <img
+            src="/pinguim-chef.png"
+            alt="Pinguim chef mascote"
+            className="h-40 w-40 shrink-0 object-contain"
+          />
           <div className="flex flex-1 flex-col items-center text-center">
-            <ForkMark />
-            <p className="mt-2 text-[26px] font-extrabold leading-none tracking-tight text-slate-800">
-              Restô<span className="text-[#f04e23]">Busca</span>
+            <p className="text-[40px] font-black leading-none tracking-tight text-slate-800">
+              Zup
             </p>
             <p className="mt-2 max-w-[170px] text-[11px] leading-snug text-slate-500">
               Descubra os melhores restaurantes, por perto e com as melhores opções.

@@ -10,6 +10,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useFavorites } from '../api/favorites';
 import { Layout } from '../components/Layout';
 import { StarRating } from '../components/StarRating';
 import {
@@ -18,7 +19,6 @@ import {
   FavButton,
   RatingBadge,
   fmtDistance,
-  useFavs,
 } from '../components/cards';
 import type { Restaurant } from '../components/RestaurantCard';
 
@@ -54,7 +54,7 @@ export function RestaurantDetail() {
   const [stars, setStars] = useState(5);
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
-  const { favs, toggle } = useFavs();
+  const { isFav, toggle, favError } = useFavorites();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -98,25 +98,28 @@ export function RestaurantDetail() {
 
   return (
     <Layout>
-      <div className="flex items-center justify-between gap-3">
-        <button
-          onClick={() => (from ? nav(from) : nav(-1))}
-          className="flex items-center gap-1 text-sm font-semibold text-[#f04e23] hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </button>
-        <Link
-          to="/discoveries"
-          className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
-        >
-          <span aria-hidden="true">🧭</span>
-          Ver mais descobertas
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+      <div className="sticky top-0 z-10 -mx-4 bg-orange-50/95 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            onClick={() => (from ? nav(from) : nav(-1))}
+            className="flex items-center gap-1 text-sm font-semibold text-[#f04e23] hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+          <Link
+            to="/em-alta"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"
+          >
+            <span aria-hidden="true">🧭</span>
+            Ver mais em alta
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
+      {favError && <p className="mt-2 text-center text-sm text-red-600">{favError}</p>}
 
       {!restaurant && !error && (
         <div className="mt-4 overflow-hidden rounded-2xl bg-white p-2 shadow-sm">
@@ -143,7 +146,7 @@ export function RestaurantDetail() {
             <div className="p-4 pt-3">
               <div className="flex items-start justify-between gap-2">
                 <h1 className="text-xl font-extrabold text-slate-800">{restaurant.name}</h1>
-                <FavButton fav={favs.includes(restaurant.id)} onToggle={() => toggle(restaurant.id)} className="shrink-0" />
+                <FavButton fav={restaurant ? isFav(restaurant) : false} onToggle={() => restaurant && toggle(restaurant)} className="shrink-0" />
               </div>
 
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-slate-500">

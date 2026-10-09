@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<DiscoveryCache> DiscoveryCaches => Set<DiscoveryCache>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<Favorite> Favorites => Set<Favorite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<DiscoveryCache>(e =>
         {
             e.HasKey(x => x.UserId);
+        });
+
+        modelBuilder.Entity<Favorite>(e =>
+        {
+            // Chave composta já garante unicidade de (UserId, RestaurantId).
+            e.HasKey(x => new { x.UserId, x.RestaurantId });
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Restaurant).WithMany().HasForeignKey(x => x.RestaurantId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Promotion>(e =>

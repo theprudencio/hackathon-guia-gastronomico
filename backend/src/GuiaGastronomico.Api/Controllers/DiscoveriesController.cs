@@ -14,7 +14,8 @@ namespace GuiaGastronomico.Api.Controllers;
 public class DiscoveriesController(
     AppDbContext db,
     DiscoveryService discoveries,
-    ReviewService reviews) : ControllerBase
+    ReviewService reviews,
+    FavoriteService favorites) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<RestaurantDto>>> Get(CancellationToken ct)
@@ -25,6 +26,7 @@ public class DiscoveriesController(
         var list = await discoveries.GetAsync(userId, ct);
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
         var stats = await reviews.StatsAsync(list.Select(r => r.Id), ct);
+        var favs = await favorites.IdsAsync(userId, ct);
 
         return Ok(list.Select(r =>
         {
@@ -35,7 +37,7 @@ public class DiscoveriesController(
                 user?.Latitude.HasValue == true && user?.Longitude.HasValue == true
                     ? Math.Round(SeedRestaurants.GeoKm(user!.Latitude!.Value, user.Longitude!.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count);
+                s.avg, s.count, favs.Contains(r.Id));
         }).ToList());
     }
 }
