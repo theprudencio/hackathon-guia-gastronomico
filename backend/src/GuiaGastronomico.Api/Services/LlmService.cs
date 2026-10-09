@@ -54,15 +54,7 @@ public class LlmService(HttpClient http, IOptions<LlmOptions> options, ILogger<L
                 {
                     role = "assistant",
                     content = m.Content,
-                    tool_calls = new[]
-                    {
-                        new
-                        {
-                            id = m.ToolCall.Id,
-                            type = "function",
-                            function = new { name = m.ToolCall.Name, arguments = m.ToolCall.Arguments },
-                        },
-                    },
+                    tool_calls = new[] { BuildToolCall(m.ToolCall) },
                 }
                 : m.Role == "tool"
                     ? new { role = "tool", tool_call_id = m.ToolCallId, content = m.Content }
@@ -87,12 +79,38 @@ public class LlmService(HttpClient http, IOptions<LlmOptions> options, ILogger<L
             var t = calls[0];
             var fn = t.GetProperty("function");
             if (fn.GetProperty("name").GetString() == "buscar_restaurantes")
+            {
+                string? thoughtSignature = null;
+                if (t.TryGetProperty("extra_content", out var ec)
+                    && ec.TryGetProperty("google", out var g)
+                    && g.TryGetProperty("thought_signature", out var ts))
+                    thoughtSignature = ts.GetString();
                 tool = new LlmToolCall(
                     t.GetProperty("id").GetString() ?? Guid.NewGuid().ToString(),
                     "buscar_restaurantes",
-                    fn.GetProperty("arguments").GetString() ?? "{}");
+                    fn.GetProperty("arguments").GetString() ?? "{}",
+                    thoughtSignature);
+            }
         }
         return new LlmTurn(content, tool);
+    }
+
+    // Gemini 3.x via endpoint OpenAI-compatible exige de volta o
+    // extra_content.google.thought_signature no 2º turno ( functionCall parts ).
+    private static object BuildToolCall(LlmToolCall call)
+    {
+        var dict = new Dictionary<string, object>
+        {
+            ["id"] = call.Id,
+            ["type"] = "function",
+            ["function"] = new { name = call.Name, arguments = call.Arguments },
+        };
+        if (!string.IsNullOrWhiteSpace(call.ThoughtSignature))
+            dict["extra_content"] = new
+            {
+                google = new { thought_signature = call.ThoughtSignature },
+            };
+        return dict;
     }
 }
 
