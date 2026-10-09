@@ -71,7 +71,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddCors(o => o.AddPolicy("front", p =>
-    p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+{
+    // Só o front pode chamar a API. Lista via env (Render/Vercel) ou config:
+    // CORS_ORIGINS=https://meu-app.vercel.app,https://www.meu-dominio.com
+    var raw = Environment.GetEnvironmentVariable("CORS_ORIGINS")
+        ?? builder.Configuration["Cors:AllowedOrigins"] ?? "";
+    var origins = raw.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
+        .Select(s => s.Trim().TrimEnd('/'))
+        .Where(s => s.Length > 0)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+    if (origins.Length == 0)
+        origins = ["http://localhost:5173"]; // dev local
+    p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+}));
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

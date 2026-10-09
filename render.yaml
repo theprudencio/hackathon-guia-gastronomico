@@ -1,0 +1,25 @@
+# Blueprint do Render ( deploy via "New > Blueprint" apontando p/ o repo ).
+# O banco é o Neon (Postgres externo): cole a connection string em DB_CONN.
+services:
+  - type: web
+    name: guia-gastronomico-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DB_CONN
+        sync: false # exigida: connection string do Neon (com ?sslmode=require)
+      - key: JWT_SECRET
+        generateValue: true # gerada pelo Render (guarde cópia se precisar)
+      - key: CORS_ORIGINS
+        sync: false # exigida: https://SEU-APP.vercel.app (só o front chama a API)
+      - key: GOOGLE_PLACES_KEY
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: LLM_MODEL
+        value: gemini-3.5-flash-lite
