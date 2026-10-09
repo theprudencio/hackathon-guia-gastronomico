@@ -42,11 +42,16 @@ public class ChatOrchestrator(
         try
         {
             var system = SystemPrompt(tastes, user.LocationLabel, lat, lng);
-            var messages = new List<LlmMsg>
+            var messages = new List<LlmMsg> { new("system", system) };
+            // Histórico recente (sem ele, continuações como "e o segundo?" alucinam).
+            foreach (var h in (req.History ?? []).TakeLast(8))
             {
-                new("system", system),
-                new("user", $"Pedido: {message}"),
-            };
+                var role = h.Role == "assistant" ? "assistant" : "user";
+                var text = (h.Text ?? "").Trim();
+                if (text.Length == 0) continue;
+                messages.Add(new(role, text.Length > 500 ? text[..500] : text));
+            }
+            messages.Add(new("user", $"Pedido: {message}"));
 
             var turn = await llm.ChatAsync(messages, ct);
             if (turn.ToolCall is null)
@@ -87,9 +92,10 @@ public class ChatOrchestrator(
         Localização: {(location ?? (lat.HasValue ? $"{lat},{lng}" : "não informada"))}.
         Regras:
         1. Chame buscar_restaurantes UMA vez, com consulta combinando o pedido e os gostos.
-        2. Recomende APENAS restaurantes retornados pela ferramenta (máx. 3).
+        2. Recomende APENAS restaurantes retornados pela ferramenta (máx. 3). Nunca invente nomes.
         3. Justifique cada escolha com base no pedido e nos gostos do usuário.
         4. Se a ferramenta não retornar nada, diga que não achou e sugira tentar outro gosto.
+        5. Use o histórico para entender continuações (ex.: "e o segundo?", "mais barato?").
         """;
 
     private static (string consulta, int max) ParseToolArgs(string argsJson, string fallback)

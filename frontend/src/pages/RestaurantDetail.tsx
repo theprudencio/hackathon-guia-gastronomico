@@ -30,8 +30,13 @@ interface Review {
   createdAt: string;
 }
 
-function mapsUrl(lat: number, lng: number) {
-  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+function mapsUrl(r: { name: string; address: string; placeId: string }) {
+  const q = encodeURIComponent(`${r.name} ${r.address}`);
+  // PlaceId real do Google abre a ficha do estabelecimento; ids locais (seed-/adv-) usam busca por texto.
+  const isGoogleId = !r.placeId.startsWith('seed-') && !r.placeId.startsWith('adv-');
+  return isGoogleId
+    ? `https://www.google.com/maps/search/?api=1&query=${q}&query_place_id=${r.placeId}`
+    : `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
 
 function Avatar({ name }: { name: string }) {
@@ -182,7 +187,7 @@ export function RestaurantDetail() {
               </div>
 
               <a
-                href={mapsUrl(restaurant.lat, restaurant.lng)}
+                href={mapsUrl(restaurant)}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-4 flex h-12 items-center justify-center gap-2 rounded-xl bg-[#f04e23] text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(240,78,35,0.35)] transition hover:bg-[#d9441b]"
@@ -254,7 +259,7 @@ export function RestaurantDetail() {
               </h2>
               <p className="mt-2 text-[13px] text-slate-500">{restaurant.address}</p>
               <a
-                href={mapsUrl(restaurant.lat, restaurant.lng)}
+                href={mapsUrl(restaurant)}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-orange-100/70 px-3 py-1.5 text-xs font-semibold text-[#f04e23] transition hover:bg-orange-100"

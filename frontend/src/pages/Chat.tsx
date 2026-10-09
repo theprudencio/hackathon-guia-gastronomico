@@ -44,6 +44,8 @@ export function Chat() {
           message: text,
           lat: user?.latitude ?? null,
           lng: user?.longitude ?? null,
+          // Histórico recente p/ o LLM entender continuações ("e o segundo?").
+          history: messages.slice(-8).map((m) => ({ role: m.role, text: m.text.slice(0, 500) })),
         }),
       });
       setMessages((m) => [...m, { role: 'assistant', text: res.reply, restaurants: res.restaurants, at: Date.now() }]);

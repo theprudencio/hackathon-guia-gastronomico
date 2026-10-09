@@ -15,6 +15,10 @@ public class LlmService(HttpClient http, IOptions<LlmOptions> options, ILogger<L
     public async Task<LlmTurn> ChatAsync(IReadOnlyList<LlmMsg> messages, CancellationToken ct = default)
     {
         var opt = options.Value;
+        // Timeout próprio: sem resposta em 30s, cai p/ o fallback em vez de travar o chat.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        var token = cts.Token;
         using var req = new HttpRequestMessage(HttpMethod.Post, $"{opt.BaseUrl.TrimEnd('/')}/chat/completions");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", opt.ApiKey);
         req.Content = new StringContent(JsonSerializer.Serialize(new
@@ -61,8 +65,8 @@ public class LlmService(HttpClient http, IOptions<LlmOptions> options, ILogger<L
                     : new { role = m.Role, content = m.Content }),
         }), Encoding.UTF8, "application/json");
 
-        using var res = await http.SendAsync(req, ct);
-        var body = await res.Content.ReadAsStringAsync(ct);
+        using var res = await http.SendAsync(req, token);
+        var body = await res.Content.ReadAsStringAsync(token);
         if (!res.IsSuccessStatusCode)
         {
             logger.LogWarning("LLM {Status}: {Body}", (int)res.StatusCode, body[..Math.Min(300, body.Length)]);
