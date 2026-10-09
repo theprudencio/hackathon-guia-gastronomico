@@ -37,6 +37,8 @@ builder.Services.Configure<LlmOptions>(o =>
 builder.Services.AddSingleton<GuiaGastronomico.Api.Services.TokenService>();
 builder.Services.AddHttpClient<IPlacesService, PlacesService>();
 builder.Services.AddHttpClient<ILlmService, LlmService>();
+builder.Services.AddHttpClient<IGeocodeService, GeocodeService>();
+builder.Services.AddHttpClient<IOpeningHoursService, OpeningHoursService>();
 builder.Services.AddScoped<ChatOrchestrator>();
 builder.Services.AddScoped<ReviewService>();
 builder.Services.AddScoped<DiscoveryService>();

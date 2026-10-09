@@ -20,6 +20,8 @@ const baseRestaurant = {
   avgStars: null,
   reviewsCount: 0,
   isFavorite: false,
+  openNow: null,
+  openingHours: null,
 } as Restaurant;
 
 // Mesmo wiring do PromoCard/EmAltaCard: fav=isFav(r), toggle(r).

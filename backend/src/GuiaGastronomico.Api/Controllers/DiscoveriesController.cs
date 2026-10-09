@@ -14,6 +14,7 @@ namespace GuiaGastronomico.Api.Controllers;
 public class DiscoveriesController(
     AppDbContext db,
     DiscoveryService discoveries,
+    IOpeningHoursService hours,
     ReviewService reviews,
     FavoriteService favorites) : ControllerBase
 {
@@ -37,6 +38,7 @@ public class DiscoveriesController(
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
         var stats = await reviews.StatsAsync(list.Select(r => r.Id), ct);
         var favs = await favorites.IdsAsync(userId, ct);
+        await hours.EnrichAsync(list, ct);
 
         return Ok(list.Select(r =>
         {
@@ -47,7 +49,8 @@ public class DiscoveriesController(
                 user?.Latitude.HasValue == true && user?.Longitude.HasValue == true
                     ? Math.Round(SeedRestaurants.GeoKm(user!.Latitude!.Value, user.Longitude!.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count, favs.Contains(r.Id));
+                s.avg, s.count, favs.Contains(r.Id),
+                r.OpenNow, RestaurantDtoMapper.HoursOf(r.OpeningHours));
         }).ToList());
     }
 }

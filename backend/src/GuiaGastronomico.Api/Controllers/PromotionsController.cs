@@ -11,7 +11,7 @@ namespace GuiaGastronomico.Api.Controllers;
 
 [ApiController]
 [Route("api/promotions")]
-public class PromotionsController(AppDbContext db, ReviewService reviews, FavoriteService favorites) : ControllerBase
+public class PromotionsController(AppDbContext db, IOpeningHoursService hours, ReviewService reviews, FavoriteService favorites) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -26,6 +26,7 @@ public class PromotionsController(AppDbContext db, ReviewService reviews, Favori
         var stats = await reviews.StatsAsync(items.Select(i => i.RestaurantId), ct);
         Guid? userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
         var favs = await favorites.IdsAsync(userId, ct);
+        await hours.EnrichAsync(items.Select(i => i.Restaurant!).Where(r => r is not null).ToList(), ct);
         return Ok(items.Select(p => ToDto(p, stats, favs)).ToList());
     }
 
@@ -83,6 +84,7 @@ public class PromotionsController(AppDbContext db, ReviewService reviews, Favori
         promo.Advertiser = advertiser;
         var stats = await reviews.StatsAsync([restaurant.Id], ct);
         var favs = await favorites.IdsAsync(advertiserId, ct);
+        await hours.EnrichAsync([restaurant], ct);
         return Created($"/api/promotions/{promo.Id}", ToDto(promo, stats, favs));
     }
 
@@ -94,6 +96,7 @@ public class PromotionsController(AppDbContext db, ReviewService reviews, Favori
             p.Id, p.Title, p.Description, p.Plan, PromotionPlans.Label(p.Plan),
             p.Status, p.StartsAt, p.EndsAt, p.Advertiser?.Name ?? "Anunciante",
             new RestaurantDto(r.Id, r.PlaceId, r.Name, r.Address, r.Lat, r.Lng,
-                r.Rating, r.PriceLevel, RestaurantDtoMapper.PhotosOf(r), r.Cuisines, null, s.avg, s.count, favs.Contains(r.Id)));
+                r.Rating, r.PriceLevel, RestaurantDtoMapper.PhotosOf(r), r.Cuisines, null, s.avg, s.count, favs.Contains(r.Id),
+                r.OpenNow, RestaurantDtoMapper.HoursOf(r.OpeningHours)));
     }
 }

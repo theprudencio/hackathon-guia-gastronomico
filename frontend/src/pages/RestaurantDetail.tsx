@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Car,
   ChevronRight,
+  Clock,
   MapPin,
   Navigation,
   Star,
@@ -17,8 +18,10 @@ import {
   CoverPhoto,
   CuisinePill,
   FavButton,
+  OpenBadge,
   RatingBadge,
   fmtDistance,
+  priceLabel,
 } from '../components/cards';
 import type { Restaurant } from '../components/RestaurantCard';
 
@@ -176,6 +179,7 @@ export function RestaurantDetail() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
+                <OpenBadge open={restaurant.openNow} />
                 <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
                   <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                   {restaurant.reviewsCount} avaliação(ões)
@@ -186,9 +190,9 @@ export function RestaurantDetail() {
                     média local {restaurant.avgStars.toFixed(1)}
                   </span>
                 )}
-                {restaurant.priceLevel != null && (
+                {priceLabel(restaurant.priceLevel) && (
                   <span className="flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                    <span className="text-[#f04e23]">${'$'.repeat(Math.max(1, restaurant.priceLevel))}</span>
+                    <span className="text-[#f04e23]">{priceLabel(restaurant.priceLevel)}</span>
                   </span>
                 )}
               </div>
@@ -257,6 +261,40 @@ export function RestaurantDetail() {
                   {saving ? 'Enviando...' : 'Avaliar'}
                 </button>
               </div>
+            </section>
+
+            <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+              <h2 className="flex items-center gap-1.5 font-bold text-slate-800">
+                <Clock className="h-4 w-4 text-[#f04e23]" />
+                Horário de funcionamento
+              </h2>
+              {restaurant.openingHours && restaurant.openingHours.length > 0 ? (
+                <ul className="mt-2 divide-y divide-slate-50">
+                  {restaurant.openingHours.map((d) => {
+                    const today = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date().getDay()] === d.day;
+                    return (
+                      <li
+                        key={d.day}
+                        className={`flex items-center justify-between py-1.5 text-[13px] ${
+                          today ? 'font-bold text-slate-800' : 'text-slate-500'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 capitalize">
+                          {d.day}
+                          {today && (
+                            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold normal-case text-emerald-700">
+                              hoje
+                            </span>
+                          )}
+                        </span>
+                        <span className={d.hours === 'Fechado' ? 'text-slate-400' : ''}>{d.hours}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="mt-2 text-[13px] text-slate-400">Horário não informado.</p>
+              )}
             </section>
 
             <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">

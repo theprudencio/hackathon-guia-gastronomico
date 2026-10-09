@@ -9,6 +9,7 @@ namespace GuiaGastronomico.Api.Services;
 public class ChatOrchestrator(
     AppDbContext db,
     IPlacesService places,
+    IOpeningHoursService openingHours,
     ILlmService llm,
     ReviewService reviews,
     FavoriteService favorites,
@@ -157,6 +158,7 @@ public class ChatOrchestrator(
         var top = list.Take(3).ToList();
         var stats = await reviews.StatsAsync(top.Select(r => r.Id), ct);
         var favs = await favorites.IdsAsync(userId, ct);
+        await openingHours.EnrichAsync(top, ct);
         return new ChatResponse(reply, top.Select(r =>
         {
             stats.TryGetValue(r.Id, out var s);
@@ -166,7 +168,8 @@ public class ChatOrchestrator(
                 lat.HasValue && lng.HasValue
                     ? Math.Round(Data.SeedRestaurants.GeoKm(lat.Value, lng.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count, favs.Contains(r.Id));
+                s.avg, s.count, favs.Contains(r.Id),
+                r.OpenNow, RestaurantDtoMapper.HoursOf(r.OpeningHours));
         }).ToList());
     }
 }

@@ -12,7 +12,7 @@ namespace GuiaGastronomico.Api.Controllers;
 [ApiController]
 [Route("api/favorites")]
 [Authorize]
-public class FavoritesController(AppDbContext db, ReviewService reviews) : ControllerBase
+public class FavoritesController(AppDbContext db, IOpeningHoursService hours, ReviewService reviews) : ControllerBase
 {
     private Guid? CurrentUserId() =>
         Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
@@ -33,6 +33,7 @@ public class FavoritesController(AppDbContext db, ReviewService reviews) : Contr
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct);
         var restaurants = favs.Select(f => f.Restaurant!).Where(r => r is not null).ToList();
         var stats = await reviews.StatsAsync(restaurants.Select(r => r.Id), ct);
+        await hours.EnrichAsync(restaurants, ct);
 
         return Ok(restaurants.Select(r =>
         {
@@ -43,7 +44,8 @@ public class FavoritesController(AppDbContext db, ReviewService reviews) : Contr
                 user?.Latitude.HasValue == true && user?.Longitude.HasValue == true
                     ? Math.Round(SeedRestaurants.GeoKm(user!.Latitude!.Value, user.Longitude!.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count, IsFavorite: true);
+                s.avg, s.count, IsFavorite: true,
+                OpenNow: r.OpenNow, OpeningHours: RestaurantDtoMapper.HoursOf(r.OpeningHours));
         }).ToList());
     }
 

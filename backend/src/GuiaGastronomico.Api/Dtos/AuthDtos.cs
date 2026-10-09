@@ -25,3 +25,9 @@ public record UserDto(
     double? Longitude,
     string? LocationLabel,
     List<string> Cuisines);
+
+public record UpdateProfileRequest(
+    string? Name,
+    [Range(-90, 90)] double? Latitude,
+    [Range(-180, 180)] double? Longitude,
+    [MaxLength(300)] string? LocationLabel);

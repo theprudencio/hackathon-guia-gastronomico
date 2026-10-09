@@ -21,6 +21,35 @@ public class MeController(AppDbContext db) : ControllerBase
         return Ok(ToDto(user));
     }
 
+    [HttpPut]
+    public async Task<ActionResult<UserDto>> UpdateProfile([FromBody] UpdateProfileRequest req)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        var user = await db.Users.Include(u => u.Cuisines)
+            .FirstOrDefaultAsync(u => u.Id == CurrentUserId());
+        if (user is null) return Unauthorized();
+
+        if (req.Name is not null)
+        {
+            var name = req.Name.Trim();
+            if (name.Length is < 2 or > 120)
+                return BadRequest(new { message = "Informe um nome com 2 a 120 caracteres." });
+            user.Name = name;
+        }
+
+        user.Latitude = req.Latitude;
+        user.Longitude = req.Longitude;
+        user.LocationLabel = string.IsNullOrWhiteSpace(req.LocationLabel) ? null : req.LocationLabel.Trim();
+
+        // Coordenadas sem nome legível não valem: a UI nunca exibe lat/lng.
+        if ((user.Latitude.HasValue || user.Longitude.HasValue) && user.LocationLabel is null)
+            return BadRequest(new { message = "Informe o nome da sua cidade ou bairro." });
+
+        await db.SaveChangesAsync();
+        return Ok(ToDto(user));
+    }
+
     [HttpPut("preferences")]
     public async Task<ActionResult<UserDto>> UpdatePreferences([FromBody] UpdatePreferencesRequest req)
     {

@@ -1,4 +1,4 @@
-import { CircleDollarSign, Heart, MapPin, Star, UtensilsCrossed } from 'lucide-react';
+import { CircleDollarSign, Clock, Heart, MapPin, Star, UtensilsCrossed } from 'lucide-react';
 import { PhotoCarousel } from './PhotoCarousel';
 import type { Restaurant } from './RestaurantCard';
 
@@ -36,6 +36,32 @@ export function cuisineIcon(cuisine: string): string {
 export function fmtDistance(km: number | null): string | null {
   if (km == null) return null;
   return `${Math.round(km * 10) / 10} km`;
+}
+
+/** Faixa de preço média: "$$ · Moderado". Null quando desconhecida. */
+export function priceLabel(level: number | null | undefined): string | null {
+  if (level == null) return null;
+  if (level <= 0) return 'Grátis';
+  if (level === 1) return '$ · Econômico';
+  if (level === 2) return '$$ · Moderado';
+  if (level === 3) return '$$$ · Caro';
+  return '$$$$ · Muito caro';
+}
+
+/** Selo "Aberto agora"/"Fechado". Nada quando desconhecido. */
+export function OpenBadge({ open }: { open: boolean | null | undefined }) {
+  if (open == null) return null;
+  return open ? (
+    <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+      Aberto agora
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+      <Clock className="h-3 w-3" aria-hidden="true" />
+      Fechado
+    </span>
+  );
 }
 
 /** Foto default exibida enquanto a API de fotos não entra. */
@@ -130,15 +156,16 @@ export function MetaChips({ r }: { r: Restaurant }) {
           </span>
         </>
       )}
-      {r.priceLevel != null && (
+      {r.priceLevel != null && priceLabel(r.priceLevel) && (
         <>
           <span className="h-4 w-px bg-slate-100" />
-          <span className="flex items-center gap-1 text-[11px] text-slate-500">
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-slate-600">
             <CircleDollarSign className="h-3.5 w-3.5 text-[#f04e23]" />
-            {'$'.repeat(Math.max(1, r.priceLevel))}
+            {priceLabel(r.priceLevel)}
           </span>
         </>
       )}
+      <OpenBadge open={r.openNow} />
     </div>
   );
 }

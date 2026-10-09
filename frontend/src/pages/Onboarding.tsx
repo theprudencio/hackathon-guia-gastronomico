@@ -14,6 +14,8 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { priceLabel } from '../components/cards';
+import { reverseGeocode } from '../lib/location';
 import { useAuth } from '../auth/AuthContext';
 import { CUISINES } from '../lib/cuisines';
 import { cuisineIcon } from '../components/cards';
@@ -25,6 +27,8 @@ interface Restaurant {
   rating: number | null;
   distanceKm: number | null;
   cuisines: string[];
+  priceLevel?: number | null;
+  openNow?: boolean | null;
 }
 
 function cap(s: string) {
@@ -39,6 +43,7 @@ export function Onboarding() {
   const [label, setLabel] = useState(user?.locationLabel ?? '');
   const [selected, setSelected] = useState<string[]>(user?.cuisines ?? []);
   const [locating, setLocating] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<Restaurant[]>([]);
@@ -50,16 +55,24 @@ export function Onboarding() {
 
   function useGeolocation() {
     if (!navigator.geolocation) {
-      setError('Geolocalização não suportada. Digite sua cidade/endereço.');
+      setError('Geolocalização não suportada. Digite sua cidade e estado.');
       return;
     }
     setLocating(true);
     setError('');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLat(pos.coords.latitude);
-        setLng(pos.coords.longitude);
+        const { latitude, longitude } = pos.coords;
+        setLat(latitude);
+        setLng(longitude);
         setLocating(false);
+        // Preenche a cidade automaticamente a partir das coordenadas
+        setResolving(true);
+        void reverseGeocode(latitude, longitude).then((city) => {
+          if (city) setLabel(city);
+          else setError('Capturei as coordenadas, mas digite sua cidade e estado.');
+          setResolving(false);
+        });
       },
       () => {
         setLocating(false);
@@ -143,7 +156,7 @@ export function Onboarding() {
       return;
     }
     if ((lat != null || lng != null) && !label.trim()) {
-      setError('Digite o nome da sua cidade ou bairro para concluir.');
+      setError('Digite sua cidade e estado para concluir.');
       return;
     }
     setSaving(true);
@@ -192,7 +205,7 @@ export function Onboarding() {
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100">
               <MapPin className="h-5 w-5 fill-[#f04e23] text-[#f04e23]" />
             </span>
-            <h1 className="mt-2 text-[28px] font-extrabold leading-tight text-[#22314a]">Onde você está?</h1>
+            <h1 className="mt-2 text-[28px] font-extrabold leading-tight text-[#22314a]">De qual cidade e estado você é?</h1>
             <p className="mt-1 text-[13px] text-slate-500">
               Usamos isso para buscar restaurantes perto de você.
             </p>
@@ -203,11 +216,11 @@ export function Onboarding() {
         <div className="mt-4 rounded-3xl bg-white/80 p-3 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
           <button
             onClick={useGeolocation}
-            disabled={locating}
+            disabled={locating || resolving}
             className="flex w-full items-center gap-3 rounded-2xl bg-[#263142] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#1f2a3a] disabled:opacity-60"
           >
             <MapPin className="h-5 w-5 fill-[#f04e23] text-[#f04e23]" />
-            <span className="flex-1 text-left">{locating ? 'Localizando...' : 'Usar minha localização'}</span>
+            <span className="flex-1 text-left">{locating ? 'Localizando...' : resolving ? 'Buscando sua cidade...' : 'Usar minha localização'}</span>
             <LocateFixed className="h-5 w-5 text-white" />
           </button>
 
@@ -217,15 +230,19 @@ export function Onboarding() {
             </span>
             <input
               className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
-              placeholder="Sua cidade ou bairro (ex.: Santos, SP)"
-              aria-label="Sua cidade ou bairro"
+              placeholder="Sua cidade e estado (ex.: Santos, SP)"
+              aria-label="Sua cidade e estado"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
           </label>
 
-          {lat != null && lng != null && (
+          {resolving ? (
+            <p className="px-1.5 pb-1 pt-2.5 text-xs font-medium text-slate-500">
+              Buscando sua cidade...
+            </p>
+          ) : lat != null && lng != null && (
             <p className="px-1.5 pb-1 pt-2.5 text-xs font-medium text-emerald-600">
               Localização ativada — vamos buscar perto de você.
             </p>
@@ -313,6 +330,8 @@ export function Onboarding() {
                     </span>
                     <span className="mt-0.5 block text-slate-400">
                       {r.rating ? `★ ${r.rating}` : ''} {r.distanceKm != null ? `· ${r.distanceKm} km` : ''}
+                      {priceLabel(r.priceLevel ?? null) ? ` · ${priceLabel(r.priceLevel ?? null)}` : ''}
+                      {r.openNow === true ? ' · 🟢 Aberto agora' : r.openNow === false ? ' · Fechado' : ''}
                     </span>
                     <span className="mt-0.5 block text-slate-500">{r.address}</span>
                   </Link>

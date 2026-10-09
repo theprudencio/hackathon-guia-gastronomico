@@ -15,6 +15,7 @@ namespace GuiaGastronomico.Api.Controllers;
 public class RestaurantsController(
     AppDbContext db,
     IPlacesService places,
+    IOpeningHoursService hours,
     ReviewService reviews,
     FavoriteService favorites) : ControllerBase
 {
@@ -32,10 +33,11 @@ public class RestaurantsController(
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<RestaurantDto>> GetById(Guid id)
+    public async Task<ActionResult<RestaurantDto>> GetById(Guid id, CancellationToken ct)
     {
-        var r = await db.Restaurants.FirstOrDefaultAsync(x => x.Id == id);
+        var r = await db.Restaurants.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is null) return NotFound(new { message = "Restaurante não encontrado." });
+        await hours.EnrichAsync([r], ct);
         return Ok((await ToDtosAsync([r], null, null)).Single());
     }
 
@@ -89,6 +91,7 @@ public class RestaurantsController(
     {
         var stats = await reviews.StatsAsync(list.Select(r => r.Id), ct);
         var favs = await favorites.IdsAsync(CurrentUserId(), ct);
+        await hours.EnrichAsync(list, ct);
         return list.Select(r =>
         {
             stats.TryGetValue(r.Id, out var s);
@@ -98,7 +101,8 @@ public class RestaurantsController(
                 lat.HasValue && lng.HasValue
                     ? Math.Round(Data.SeedRestaurants.GeoKm(lat.Value, lng.Value, r.Lat, r.Lng), 1)
                     : null,
-                s.avg, s.count, favs.Contains(r.Id));
+                s.avg, s.count, favs.Contains(r.Id),
+                r.OpenNow, RestaurantDtoMapper.HoursOf(r.OpeningHours));
         }).ToList();
     }
 }

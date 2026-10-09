@@ -16,7 +16,7 @@ public class PlacesService(
     ILogger<PlacesService> logger) : IPlacesService
 {
     private const string Endpoint = "https://places.googleapis.com/v1/places:searchText";
-    private const string FieldMask = "places.displayName,places.formattedAddress,places.location,places.rating,places.priceLevel,places.photos,places.types,places.id";
+    private const string FieldMask = "places.displayName,places.formattedAddress,places.location,places.rating,places.priceLevel,places.photos,places.types,places.id,places.regularOpeningHours";
 
     private static readonly Dictionary<string, string> TypeToCuisine = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -183,6 +183,14 @@ public class PlacesService(
                 int? price = p.TryGetProperty("priceLevel", out var pl) ? MapPrice(pl.GetString()) : null;
                 var types = p.TryGetProperty("types", out var ty)
                     ? ty.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : new();
+                bool? openNow = null;
+                List<DayHours> hours = new();
+                if (p.TryGetProperty("regularOpeningHours", out var roh))
+                {
+                    openNow = roh.TryGetProperty("openNow", out var on) ? on.GetBoolean() : null;
+                    hours = OpeningHoursService.ParsePeriods(roh);
+                    openNow ??= hours.Count > 0 ? OpeningHoursService.IsOpenNow(hours) : null;
+                }
                 list.Add(new Restaurant
                 {
                     PlaceId = placeId,
@@ -195,6 +203,8 @@ public class PlacesService(
                     Photos = ParsePhotos(p),
                     Cuisines = MapCuisines(types, query),
                     CachedAt = DateTime.UtcNow,
+                    OpenNow = openNow,
+                    OpeningHours = hours,
                 });
             }
             catch { /* pula item malformado */ }

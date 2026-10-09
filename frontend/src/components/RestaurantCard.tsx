@@ -1,6 +1,12 @@
 import { FavButton } from './cards';
+import { OpenBadge, priceLabel } from './cards';
 import { PhotoCarousel } from './PhotoCarousel';
 import type { CarouselPhoto } from './PhotoCarousel';
+
+export interface OpeningDay {
+  day: string;
+  hours: string;
+}
 
 export interface Restaurant {
   id: string;
@@ -17,6 +23,8 @@ export interface Restaurant {
   avgStars: number | null;
   reviewsCount: number;
   isFavorite: boolean;
+  openNow: boolean | null;
+  openingHours: OpeningDay[] | null;
 }
 
 export function RestaurantCard({
@@ -64,9 +72,10 @@ export function RestaurantCard({
           {r.distanceKm != null && (
             <span className="text-[11px] text-neutral-500">· {r.distanceKm} km</span>
           )}
-          {r.priceLevel != null && (
-            <span className="text-[11px] text-neutral-500">· {'$'.repeat(Math.max(1, r.priceLevel))}</span>
+          {priceLabel(r.priceLevel) && (
+            <span className="text-[11px] font-semibold text-neutral-600">· {priceLabel(r.priceLevel)}</span>
           )}
+          <OpenBadge open={r.openNow} />
         </div>
       </div>
     </div>
