@@ -1,4 +1,6 @@
-# Zup — Guia Gastronômico - HACKATHON GRUPO SPACE PENGUINS 
+# Zup — Guia Gastronômico
+
+# HACKATHON GRUPO SPACE PENGUINS 
 
 Para teste no link publicado, pode-se criar um usuário novo ou usar o login demo:
 
