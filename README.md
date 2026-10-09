@@ -1,5 +1,10 @@
 # Zup — Guia Gastronômico
 
+Para teste no link publicado, pode-se criar um usuário novo ou usar o login demo:
+
+Login: user@demo.com
+senha: demo123
+
 MVP do hackathon: descubra restaurantes perto de você por gostos, chat com IA,
 em alta pela comunidade, novidades de anunciantes, avaliações locais + do Google Maps.
 
