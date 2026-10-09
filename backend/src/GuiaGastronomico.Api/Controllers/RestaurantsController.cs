@@ -38,7 +38,9 @@ public class RestaurantsController(
         var r = await db.Restaurants.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is null) return NotFound(new { message = "Restaurante não encontrado." });
         await hours.EnrichAsync([r], ct);
-        return Ok((await ToDtosAsync([r], null, null)).Single());
+        var dto = (await ToDtosAsync([r], null, null, ct)).Single();
+        dto = dto with { GoogleReviews = await hours.GetGoogleReviewsAsync(r.PlaceId, ct) };
+        return Ok(dto);
     }
 
     // Em alta: ranking da comunidade (média das avaliações locais).

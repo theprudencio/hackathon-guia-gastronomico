@@ -263,6 +263,29 @@ export function RestaurantDetail() {
               </div>
             </section>
 
+            {restaurant.googleReviews && restaurant.googleReviews.length > 0 && (
+              <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
+                <h2 className="font-bold text-slate-800">Opiniões do Google Maps</h2>
+                <div className="mt-3 space-y-2">
+                  {restaurant.googleReviews.map((r, i) => (
+                    <div key={`${r.author}-${i}`} className="rounded-xl bg-[#f7f8fa] p-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={r.author} />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-700">{r.author}</p>
+                          <StarRating value={Math.max(0, Math.min(5, r.stars))} size="sm" />
+                        </div>
+                      </div>
+                      {r.text && <p className="mt-2 text-sm text-slate-600">{r.text}</p>}
+                      {r.publishedAt && (
+                        <p className="mt-1 text-[11px] text-slate-400">{r.publishedAt}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="rounded-2xl bg-white p-4 shadow-[0_10px_30px_rgba(234,88,12,0.08)]">
               <h2 className="flex items-center gap-1.5 font-bold text-slate-800">
                 <Clock className="h-4 w-4 text-[#f04e23]" />

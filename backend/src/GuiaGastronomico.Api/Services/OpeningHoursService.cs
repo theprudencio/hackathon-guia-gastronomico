@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GuiaGastronomico.Api.Domain;
+using GuiaGastronomico.Api.Dtos;
 using GuiaGastronomico.Api.Options;
 using Microsoft.Extensions.Options;
 
@@ -98,6 +99,56 @@ public class OpeningHoursService(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Horários indisponíveis p/ {PlaceId}", r.PlaceId);
+        }
+    }
+
+    public async Task<List<GoogleReviewDto>> GetGoogleReviewsAsync(string placeId, CancellationToken ct = default)
+    {
+        if (placeId.StartsWith("seed-", StringComparison.OrdinalIgnoreCase)
+            || placeId.StartsWith("adv-", StringComparison.OrdinalIgnoreCase))
+            return new();
+        var key = options.Value.ApiKey;
+        if (string.IsNullOrWhiteSpace(key)) return new();
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(6));
+            using var req = new HttpRequestMessage(HttpMethod.Get,
+                $"https://places.googleapis.com/v1/places/{placeId}?languageCode=pt-BR");
+            req.Headers.Add("X-Goog-Api-Key", key);
+            req.Headers.Add("X-Goog-FieldMask", "reviews");
+            using var res = await http.SendAsync(req, cts.Token);
+            if (!res.IsSuccessStatusCode) return new();
+            using var doc = JsonDocument.Parse(await res.Content.ReadAsStringAsync(cts.Token));
+            if (!doc.RootElement.TryGetProperty("reviews", out var arr)) return new();
+            var list = new List<GoogleReviewDto>();
+            foreach (var rv in arr.EnumerateArray().Take(5))
+            {
+                try
+                {
+                    var author = rv.TryGetProperty("authorAttribution", out var aa)
+                        && aa.TryGetProperty("displayName", out var dn)
+                        ? dn.GetString() ?? "Visitante" : "Visitante";
+                    var stars = rv.TryGetProperty("rating", out var rt) ? rt.GetInt32() : 0;
+                    string? text = null;
+                    if (rv.TryGetProperty("text", out var tx) && tx.TryGetProperty("text", out var tt))
+                        text = tt.GetString();
+                    text ??= rv.TryGetProperty("originalText", out var ot) && ot.TryGetProperty("text", out var ot2)
+                        ? ot2.GetString() : null;
+                    string? published = rv.TryGetProperty("relativePublishTimeDescription", out var rp)
+                        ? rp.GetString()
+                        : rv.TryGetProperty("publishTime", out var pt) ? pt.GetString() : null;
+                    list.Add(new GoogleReviewDto(author, Math.Clamp(stars, 0, 5), text, published));
+                }
+                catch { /* pula avaliação malformada */ }
+            }
+            return list;
+        }
+        catch (OperationCanceledException) { return new(); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Reviews do Google indisponíveis p/ {PlaceId}", placeId);
+            return new();
         }
     }
 

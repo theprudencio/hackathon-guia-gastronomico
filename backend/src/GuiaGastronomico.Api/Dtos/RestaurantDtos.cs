@@ -14,6 +14,9 @@ public record PhotoDto(string Url, string? AuthorName);
 /// <summary>Um dia de funcionamento. Day: "seg".."dom". Hours: "11:30–23:00", "24 horas" ou "Fechado".</summary>
 public record OpeningDayDto(string Day, string Hours);
 
+/// <summary>Avaliação vinda do Google Maps (somente leitura, ao vivo).</summary>
+public record GoogleReviewDto(string Author, int Stars, string? Text, string? PublishedAt);
+
 public record RestaurantDto(
     Guid Id,
     string PlaceId,
@@ -30,7 +33,8 @@ public record RestaurantDto(
     int ReviewsCount,
     bool IsFavorite = false,
     bool? OpenNow = null,
-    List<OpeningDayDto>? OpeningHours = null);
+    List<OpeningDayDto>? OpeningHours = null,
+    List<GoogleReviewDto>? GoogleReviews = null);
 
 public static class RestaurantDtoMapper
 {

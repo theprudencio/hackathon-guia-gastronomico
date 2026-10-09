@@ -8,6 +8,13 @@ export interface OpeningDay {
   hours: string;
 }
 
+export interface GoogleReview {
+  author: string;
+  stars: number;
+  text: string | null;
+  publishedAt: string | null;
+}
+
 export interface Restaurant {
   id: string;
   placeId: string;
@@ -25,6 +32,7 @@ export interface Restaurant {
   isFavorite: boolean;
   openNow: boolean | null;
   openingHours: OpeningDay[] | null;
+  googleReviews: GoogleReview[] | null;
 }
 
 export function RestaurantCard({
